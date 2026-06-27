@@ -14,12 +14,16 @@ public enum ErrorCode {
     USER_NOT_IN_ROOM("User is not a member of this room"),
     ONLY_HOST_CAN_CANCEL("Only the host can cancel the room"),
     ROOM_ALREADY_DISPATCHED("Room has already been dispatched"),
+    ROOM_EXPIRED("Room expired because fewer than 2 riders joined"),
+    ROOM_COUNTDOWN_ACTIVE("Room countdown is still active"),
+    ROOM_COUNTDOWN_FINISHED("Room countdown has finished and members are locked"),
 
     // Address errors
     ADDRESS_NOT_FOUND("Address not found"),
 
     // User errors
     USER_NOT_FOUND("User not found"),
+    INSUFFICIENT_BALANCE("Insufficient wallet balance for the 100,000 VND pre-pay hold"),
 
     // Dispatch errors
     DISPATCH_FAILED("Dispatch failed — no available partners"),

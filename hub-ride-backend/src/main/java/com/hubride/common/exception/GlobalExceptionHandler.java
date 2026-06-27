@@ -15,6 +15,12 @@ public class GlobalExceptionHandler {
         HttpStatus status = switch (ex.getErrorCode()) {
             case ROOM_NOT_FOUND, ADDRESS_NOT_FOUND, USER_NOT_FOUND -> HttpStatus.NOT_FOUND;
             case BAD_REQUEST, ROUTE_TOO_SHORT -> HttpStatus.BAD_REQUEST;
+            case ONLY_HOST_CAN_CANCEL -> HttpStatus.FORBIDDEN;
+            case INSUFFICIENT_BALANCE -> HttpStatus.UNPROCESSABLE_ENTITY;
+            case ROOM_NOT_OPEN, USER_ALREADY_IN_ROOM, USER_NOT_IN_ROOM,
+                 ROOM_ALREADY_DISPATCHED, ROOM_EXPIRED, ROOM_COUNTDOWN_ACTIVE,
+                 ROOM_COUNTDOWN_FINISHED -> HttpStatus.CONFLICT;
+            case DISPATCH_FAILED -> HttpStatus.BAD_GATEWAY;
             default -> HttpStatus.INTERNAL_SERVER_ERROR;
         };
         return ResponseEntity.status(status)

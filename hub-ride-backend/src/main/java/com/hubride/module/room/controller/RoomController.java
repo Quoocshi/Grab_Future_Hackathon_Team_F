@@ -61,11 +61,10 @@ public class RoomController {
 
     @PostMapping("/{roomId}/cancel")
     @Operation(summary = "Host cancels a room")
-    public ResponseEntity<ApiResponse<Void>> cancelRoom(
+    public ResponseEntity<ApiResponse<RefundResponse>> cancelRoom(
             @PathVariable UUID roomId,
             @RequestParam UUID userId) {
-        roomService.cancelRoom(roomId, userId);
-        return ResponseEntity.ok(ApiResponse.ok(null, "Room cancelled"));
+        return ResponseEntity.ok(ApiResponse.ok(roomService.cancelRoom(roomId, userId), "Room cancelled and holds refunded"));
     }
 
     @PostMapping("/{roomId}/dispatch")
@@ -76,10 +75,9 @@ public class RoomController {
 
     @DeleteMapping("/{roomId}/members/{userId}")
     @Operation(summary = "Joiner leaves a room")
-    public ResponseEntity<ApiResponse<Void>> leaveRoom(
+    public ResponseEntity<ApiResponse<RefundResponse>> leaveRoom(
             @PathVariable UUID roomId,
             @PathVariable UUID userId) {
-        roomService.leaveRoom(roomId, userId);
-        return ResponseEntity.ok(ApiResponse.ok(null, "Left room"));
+        return ResponseEntity.ok(ApiResponse.ok(roomService.leaveRoom(roomId, userId), "Left room and hold refunded"));
     }
 }
