@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Providers } from "@/app/providers";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Hub Ride",
-  description: "Ride hailing foundation for booking, driver matching, and operations.",
+  title: "Hub-Ride",
+  description: "Shared hub rides with room matching, countdown dispatch, and partner pricing.",
 };
 
 export default function RootLayout({
@@ -27,7 +28,9 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }

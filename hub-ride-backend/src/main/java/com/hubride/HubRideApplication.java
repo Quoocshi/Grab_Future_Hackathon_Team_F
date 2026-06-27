@@ -10,7 +10,10 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 public class HubRideApplication {
     public static void main(String[] args) {
         Dotenv dotenv = Dotenv.configure()
-                .directory("hub-ride-backend")
+                .directory(System.getProperty("user.dir").endsWith("hub-ride-backend")
+                        ? "."
+                        : "hub-ride-backend")
+                .ignoreIfMissing()
                 .ignoreIfMalformed()
                 .load();
         dotenv.entries().forEach(e -> System.setProperty(e.getKey(), e.getValue()));

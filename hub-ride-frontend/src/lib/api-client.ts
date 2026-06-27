@@ -1,12 +1,15 @@
-import { mockHubSnapshot } from "@/lib/mock-data";
-import type { HubSnapshot } from "@/types/ride";
-
 type RequestOptions = {
-  fallback?: "mock" | "throw";
   init?: RequestInit;
 };
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8081/api/v1";
+
+type ApiEnvelope<T> = {
+  success?: boolean;
+  message?: string;
+  data?: T;
+};
 
 class ApiError extends Error {
   constructor(
@@ -18,45 +21,38 @@ class ApiError extends Error {
   }
 }
 
-async function requestJson<T>(
+export async function requestJson<T>(
   path: string,
-  { fallback = "mock", init }: RequestOptions = {},
-  mockValue: T,
+  { init }: RequestOptions = {},
 ): Promise<T> {
-  if (!API_BASE_URL) {
-    if (fallback === "mock") return mockValue;
-    throw new ApiError("NEXT_PUBLIC_API_BASE_URL is not configured.");
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      ...init?.headers,
+    },
+  });
+
+  const payload = (await response.json().catch(() => null)) as ApiEnvelope<T> | T | null;
+
+  if (!response.ok) {
+    const message =
+      payload && typeof payload === "object" && "message" in payload && payload.message
+        ? String(payload.message)
+        : `Request failed with status ${response.status}.`;
+    throw new ApiError(message, response.status);
   }
 
-  try {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
-      ...init,
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        ...init?.headers,
-      },
-      next: {
-        revalidate: 30,
-        ...init?.next,
-      },
-    });
-
-    if (!response.ok) {
-      throw new ApiError(`Request failed with status ${response.status}.`, response.status);
+  if (payload && typeof payload === "object" && "data" in payload) {
+    const envelope = payload as ApiEnvelope<T>;
+    if (envelope.success === false) {
+      throw new ApiError(envelope.message ?? "API request failed.", response.status);
     }
-
-    return (await response.json()) as T;
-  } catch (error) {
-    if (fallback === "mock") return mockValue;
-    throw error;
+    return envelope.data as T;
   }
-}
 
-export const hubRideApi = {
-  getSnapshot(options?: RequestOptions): Promise<HubSnapshot> {
-    return requestJson<HubSnapshot>("/hub/snapshot", options, mockHubSnapshot);
-  },
-};
+  return payload as T;
+}
 
 export { ApiError };

@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { CircleHelp, ShieldCheck } from "lucide-react";
+import { Leaf, ShieldCheck } from "lucide-react";
 
 const footerLinks = [
-  { href: "/privacy", label: "Privacy" },
-  { href: "/terms", label: "Terms" },
-  { href: "/support", label: "Support" },
+  { href: "/rooms/new", label: "Tao phong" },
+  { href: "/rooms/browse", label: "Tim phong" },
+  { href: "/bookings", label: "Lich su" },
 ];
 
 export function Footer() {
@@ -14,11 +14,10 @@ export function Footer() {
         <div>
           <div className="flex items-center gap-2 text-sm font-semibold">
             <ShieldCheck className="size-4 text-primary" strokeWidth={1.8} aria-hidden="true" />
-            Built for reliable urban trips
+            Hub-based shared rides for demo users
           </div>
           <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
-            A foundation for rider booking, driver availability, and operations views. Data falls
-            back to local mocks until the API is connected.
+            Gom nhom tai hub, chot phong bang countdown, so sanh Grab, Be va Xanh SM de lay gia tot nhat.
           </p>
         </div>
 
@@ -30,8 +29,8 @@ export function Footer() {
           ))}
           <span className="hidden h-4 w-px bg-border sm:block" aria-hidden="true" />
           <span className="flex items-center gap-2">
-            <CircleHelp className="size-4" strokeWidth={1.8} aria-hidden="true" />
-            24/7 help center
+            <Leaf className="size-4" strokeWidth={1.8} aria-hidden="true" />
+            Less car density
           </span>
         </div>
       </div>

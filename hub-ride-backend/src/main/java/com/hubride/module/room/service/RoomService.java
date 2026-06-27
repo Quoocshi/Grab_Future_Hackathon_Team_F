@@ -215,10 +215,16 @@ public class RoomService {
                 .map(RoomMember::getAmountHeld)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        return JoinRoomResponse.builder()
+        JoinRoomResponse response = JoinRoomResponse.builder()
                 .memberCount(allMembers.size())
                 .totalHeld(totalHeld)
                 .build();
+
+        messagingTemplate.convertAndSend(
+                "/topic/room/" + roomId,
+                new DispatchService.WsPayload("JOIN", java.util.Map.of("memberCount", allMembers.size())));
+
+        return response;
     }
 
     @Transactional
@@ -236,6 +242,10 @@ public class RoomService {
 
         room.setStatus(RoomStatus.CANCELLED);
         roomRepository.save(room);
+
+        messagingTemplate.convertAndSend(
+                "/topic/room/" + roomId,
+                new DispatchService.WsPayload("CANCELLED", java.util.Map.of("roomId", roomId.toString())));
     }
 
     @Transactional
