@@ -13,7 +13,7 @@
 - **Hub-based Routing**: Đón/trả tại Hub (điểm tập trung trên trục đường chính), không door-to-door
 - **Host & Join Room**: Gom nhóm người có cùng tuyến đường trong khung 5 phút (Time-boxed)
 - **Aggregator**: So sánh giá mock giữa Grab/Be/Xanh SM, dispatch sang hãng rẻ nhất
-- **Pre-pay**: Khóa tiền tạm trong ví, đếm ngược 5 phút chốt phòng
+- **Pre-pay simulated**: Hiển thị khoản tạm giữ dự kiến, chưa trừ ví thật trong MVP
 - **Minimum 2km**: Từ chối tuyến quá ngắn (khuyến khích đi bộ/xe đạp)
 
 **Trong 10 tiếng MVP demo:**
@@ -21,6 +21,7 @@
 - KHÔNG có auth (giả lập user qua dropdown)
 - KHÔNG dùng map (input địa chỉ + lưu lat/lng)
 - Mock hoàn toàn API Grab/Be/Xanh SM (random giá + surge multiplier)
+- Goong gọi trực tiếp từ FE trong MVP, có fallback seed/demo route nếu API lỗi hoặc hết quota
 - Tập trung UX/UI đẹp kiểu Agoda/Traveloka, flow Host/Join/Dispatch rõ ràng
 
 ### Bài toán giải quyết
@@ -177,29 +178,30 @@ sequenceDiagram
     participant PG as PostgreSQL
 
     U1->>FE: Vào /rooms/new, chọn điểm đi (KTX A) + điểm đến (Quận 1)
-    FE->>BE: POST /api/v1/rooms {originAddrId, destAddrId, hostUserId}
+    FE->>BE: POST /api/v1/rooms {hostUserId, origin:{label,lat,lng,addressId?}, dest:{label,lat,lng,addressId?}}
     BE->>BE: h3.latLngToCell(origin, res=9) → h3Origin
-    BE->>PG: INSERT rooms + room_members
-    BE-->>FE: 201 {roomId, countdownSec:300}
+    BE->>PG: INSERT rooms(expires_at=now()+5m, max_members=4) + room_members
+    BE-->>FE: 201 {roomId, serverNow, expiresAt}
     FE->>WS: SUBSCRIBE /topic/room/{roomId}
 
     par Cùng lúc U2 browse
         U2->>FE: Vào /rooms/browse
-        FE->>BE: GET /api/v1/rooms?originLat=&originLng=&destLat=&destLng=
-        BE->>BE: gridDisk(originH3, k=2) → 19 cells
-        BE->>PG: SELECT rooms WHERE status=OPEN AND origin_h3 IN (...cells...)
+        FE->>BE: GET /api/v1/rooms/browse?originLat=&originLng=&destLat=&destLng=
+        BE->>BE: MVP: originH3/destH3 exact match; nếu kịp dùng gridDisk(k=2)
+        BE->>PG: SELECT rooms WHERE status=OPEN AND expires_at>now()
         BE-->>FE: List[Room] (phòng của A)
         U2->>FE: Click "Join"
         FE->>BE: POST /api/v1/rooms/{roomId}/join {userId}
-        BE->>PG: INSERT room_members
+        BE->>PG: SELECT room FOR UPDATE + check max_members + INSERT room_members
         BE->>WS: broadcast /topic/room/{roomId} {event:JOIN, members:[A,B]}
         WS-->>FE: cập nhật MemberList realtime
     end
 
-    Note over FE: FE countdown tick (setInterval 1s, tính từ countdownSec ban đầu)
+    Note over FE: FE countdown tick bằng expiresAt - Date.now()
 
     Note over BE: Countdown FE đếm 0 → FE gọi POST /api/v1/rooms/{roomId}/dispatch
     FE->>BE: POST /api/v1/rooms/{roomId}/dispatch
+    BE->>PG: SELECT room FOR UPDATE; nếu DISPATCHED thì trả booking cũ
     BE->>AGG: getBestQuote(originH3, destH3, memberCount=2)
     AGG->>AGG: mock Grab=85k, Be=72k, XanhSM=58k (surge=1.0)
     AGG-->>BE: bestQuote = {partner:XANH_SM, totalPrice:58000, perPerson:29000, eta:12}
@@ -210,29 +212,64 @@ sequenceDiagram
     FE->>U2: Navigate → /bookings/{id}
 ```
 
-### 4.2 Countdown — FE-side tick (đơn giản, không cần Redis/Scheduler)
+### 4.2 Countdown — FE-side tick bằng `expires_at`
 
-- **Backend** chỉ lưu `countdown_remaining_sec` trong DB và trả về khi tạo phòng
-- **Frontend** dùng `setInterval` 1s, decrement countdown từ giá trị ban đầu
-- Khi countdown = 0, **Frontend gọi** `POST /api/v1/rooms/{roomId}/dispatch` để trigger dispatch
-- **Lý do:** Không cần `@Scheduled` backend, không cần Redis — đơn giản tối đa cho MVP
+- **Backend** lưu `expires_at = now() + interval '5 minutes'` trong bảng `rooms`
+- API trả `serverNow` và `expiresAt`; FE tính `remaining = expiresAt - Date.now()`
+- Khi remaining <= 0, **Frontend gọi** `POST /api/v1/rooms/{roomId}/dispatch` để trigger dispatch
+- `countdown_remaining_sec` không được dùng làm logic chính; nếu cần thì chỉ là field display/compat
+- **Lý do:** Reload page, mở tab khác, hoặc join giữa chừng vẫn nhìn đúng countdown mà không cần Redis/Scheduler
 
 ```mermaid
 flowchart LR
-    A["FE: countdownSec = 300\nsetInterval 1s"] --> B{"countdown > 0?"}
-    B -- Yes --> C["countdown--\nBroadcast to UI"]
+    A["BE: rooms.expires_at\nFE: remaining = expiresAt - Date.now()"] --> B{"remaining > 0?"}
+    B -- Yes --> C["Render countdown\nsetInterval 1s"]
     C --> B
     B -- No --> D["FE: POST /rooms/{id}/dispatch"]
-    D --> E["BE: update status DISPATCHED\nBE: insert bookings\nBE: WS broadcast DISPATCHED"]
+    D --> E["BE transaction + row lock\nidempotent dispatch\nWS broadcast DISPATCHED"]
 ```
 
-### 4.3 Matching Service — H3 k-ring
+### 4.3 Dispatch idempotent — chống nhiều browser gọi cùng lúc
+
+`POST /rooms/{roomId}/dispatch` là điểm dễ tạo booking trùng vì mọi browser trong room đều có thể gọi khi countdown về 0. Backend phải coi endpoint này là idempotent:
+
+```txt
+1. Start transaction
+2. SELECT room FOR UPDATE
+3. Nếu status = DISPATCHED → trả booking/quote đã có
+4. Nếu status != OPEN → reject
+5. Nếu now < expires_at → reject, trừ khi bật manual demo override
+6. Gọi Aggregator lấy best quote
+7. UPDATE room status = DISPATCHED, dispatched_at = now()
+8. INSERT bookings cho từng member, dựa trên UNIQUE(room_id, user_id)
+9. Commit
+10. Broadcast WebSocket DISPATCHED sau khi commit
+```
+
+```java
+@Lock(LockModeType.PESSIMISTIC_WRITE)
+@Query("select r from Room r where r.id = :id")
+Optional<Room> findByIdForUpdate(UUID id);
+```
+
+`POST /rooms/{roomId}/join` cũng chạy trong transaction ngắn:
+
+```txt
+1. SELECT room FOR UPDATE
+2. Nếu status != OPEN hoặc expires_at <= now() → reject
+3. Đếm room_members hiện tại
+4. Nếu memberCount >= max_members → reject ROOM_FULL
+5. INSERT room_members, dựa trên UNIQUE(room_id, user_id) để chống join trùng
+6. Broadcast JOIN sau khi commit
+```
+
+### 4.4 Matching Service — H3 đơn giản trước, k-ring sau
 
 ```mermaid
 flowchart TB
-    Start["originLat, originLng, destLat, destLng, currentUserId"] --> Geo["h3.gridDisk(originH3, k=2)\n→ 19 hex cells (bán kính ~350m)"]
-    Geo --> Scan["SELECT rooms WHERE status='OPEN'\nAND origin_h3 IN (...19 cells...)"]
-    Scan --> FilterH3["originH3 ∈ neighbors?"]
+    Start["originLat, originLng, destLat, destLng, currentUserId"] --> Geo["MVP: latLngToCell(origin/dest, res=9)\nOptional: gridDisk(k=2) nếu còn thời gian"]
+    Geo --> Scan["SELECT rooms WHERE status='OPEN'\nAND expires_at > now()\nAND origin_h3/dest_h3 match"]
+    Scan --> FilterH3["origin/dest cùng cell hoặc trong k-ring?"]
     FilterH3 -- No --> Skip[Skip]
     FilterH3 -- Yes --> DestMatch["destH3 match\n(h3 distance < 5 cells)"]
     DestMatch -- No --> Skip
@@ -241,7 +278,7 @@ flowchart TB
     Sort --> Top5[Trả top 10 phòng"]
 ```
 
-### 4.4 Aggregator (Mocked Pricing)
+### 4.5 Aggregator (Mocked Pricing)
 
 ```java
 // AggregatorService.java — logic chọn best partner
@@ -270,7 +307,7 @@ erDiagram
         uuid id PK
         varchar full_name
         varchar phone
-        decimal wallet_balance "demo: ví tiền pre-pay"
+        decimal wallet_balance "demo: số dư hiển thị"
         timestamp created_at
     }
 
@@ -296,7 +333,8 @@ erDiagram
         double dest_lat
         double dest_lng
         varchar status "OPEN | DISPATCHED | CANCELLED | EXPIRED"
-        int countdown_remaining_sec
+        timestamp expires_at
+        int max_members
         double distance_km
         int eta_minutes
         timestamp created_at
@@ -308,7 +346,7 @@ erDiagram
         uuid room_id FK
         uuid user_id FK
         varchar role "HOST | JOINER"
-        decimal amount_held "tiền pre-pay khóa"
+        decimal amount_held "estimated hold, không trừ ví thật"
         timestamp joined_at
     }
 
@@ -338,7 +376,7 @@ erDiagram
 
 | Cột | Lý do |
 |---|---|
-| `wallet_balance` | Ví tiền demo (seed: 500.000đ/user) — phục vụ pre-pay |
+| `wallet_balance` | Số dư demo (seed: 500.000đ/user) — hiển thị UI, không trừ thật trong MVP |
 | `phone` | Định danh demo (không cần password) |
 
 #### `addresses` — Điểm đón/trả + Hub
@@ -355,15 +393,16 @@ erDiagram
 |---|---|
 | `origin_h3` / `dest_h3` | Cache H3 cell để query nhanh (không phải JOIN addresses) |
 | `origin_lat/lng` / `dest_lat/lng` | Tính Haversine distance, sort theo khoảng cách |
-| `countdown_remaining_sec` | Giá trị ban đầu 300s, FE dùng để tick countdown |
+| `expires_at` | Source of truth cho countdown. FE tính remaining từ `expiresAt - Date.now()` |
+| `max_members` | Giới hạn số người/phòng, mặc định 4 để đúng logic xe 4 chỗ |
 | `status` enum | OPEN → DISPATCHED/CANCELLED/EXPIRED |
 
 #### `room_members` — Thành viên trong phòng
 
 | Cột | Lý do |
 |---|---|
-| `role` (HOST/JOINER) | Phân biệt vai trò để UI badge + logic refund |
-| `amount_held` | Tiền đã pre-pay — nếu hủy ngang sẽ giữ lại (bù phí) |
+| `role` (HOST/JOINER) | Phân biệt vai trò để UI badge |
+| `amount_held` | Khoản tạm giữ dự kiến để demo pre-pay; không cập nhật `wallet_balance` thật |
 
 #### `bookings` — Đơn đặt xe sau dispatch
 
@@ -425,7 +464,8 @@ CREATE TABLE IF NOT EXISTS rooms (
     dest_lat                DOUBLE PRECISION NOT NULL,
     dest_lng                DOUBLE PRECISION NOT NULL,
     status                  VARCHAR(20)  NOT NULL DEFAULT 'OPEN',  -- OPEN | DISPATCHED | CANCELLED | EXPIRED
-    countdown_remaining_sec INT         NOT NULL DEFAULT 300,
+    expires_at              TIMESTAMPTZ  NOT NULL DEFAULT (NOW() + INTERVAL '5 minutes'),
+    max_members             INT          NOT NULL DEFAULT 4,
     distance_km             DOUBLE PRECISION,
     eta_minutes             INT,
     created_at              TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
@@ -457,14 +497,16 @@ CREATE TABLE IF NOT EXISTS bookings (
     vehicle_type VARCHAR(10)  NOT NULL,  -- CAR_4 | CAR_7
     eta_minutes  INT,
     status       VARCHAR(20)  NOT NULL DEFAULT 'CONFIRMED',  -- CONFIRMED | COMPLETED | CANCELLED
-    created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    UNIQUE(room_id, user_id)
 );
 
 -- -------------------------------------------------------
--- INDEXES (basic, không cần tinh chỉnh cho MVP)
+-- INDEXES
 -- -------------------------------------------------------
-CREATE INDEX IF NOT EXISTS idx_rooms_status_origin_h3
-    ON rooms(origin_h3) WHERE status = 'OPEN';
+CREATE INDEX IF NOT EXISTS idx_rooms_open_origin_dest
+    ON rooms(origin_h3, dest_h3, created_at DESC)
+    WHERE status = 'OPEN';
 
 CREATE INDEX IF NOT EXISTS idx_room_members_user
     ON room_members(user_id);
@@ -531,31 +573,44 @@ GET  /addresses?q=ktx&limit=10
 
 # Room
 POST /rooms                          # Host tạo phòng
-     body: {hostUserId, originAddrId, destAddrId}
-     → {roomId, countdownSec:300, origin, dest, distanceKm}
+     body: {
+       "hostUserId": "00000000-0000-0000-0000-000000000001",
+       "origin": {
+         "label": "KTX Khu A",
+         "lat": 10.8701,
+         "lng": 106.8008,
+         "addressId": "a0000000-0000-0000-0000-000000000001"
+       },
+       "dest": {
+         "label": "Quận 1",
+         "lat": 10.7756,
+         "lng": 106.6980,
+         "addressId": "a0000000-0000-0000-0000-000000000007"
+       }
+     }
+     → {roomId, serverNow, expiresAt, origin, dest, distanceKm, maxMembers}
 
-GET  /rooms?originLat=&originLng=&destLat=&destLng=&excludeUserId=
+     Ghi chú: `addressId` là optional. Nếu FE chọn từ seed address thì gửi `addressId`; nếu chọn từ Goong thì gửi `label/lat/lng`, BE upsert vào `addresses`.
+
+GET  /rooms/browse?originLat=&originLng=&destLat=&destLng=&excludeUserId=
      → List<RoomListItem> {roomId, hostName, originLabel, destLabel,
-                            distanceKm, memberCount, countdownSec}
+                            distanceKm, memberCount, maxMembers,
+                            serverNow, expiresAt, estimatedPricePerPerson}
 
 GET  /rooms/{roomId}                 # Room detail
      → {roomId, status, host, members[], origin, dest,
-        countdownSec, bestQuote?, allQuotes?}
+        serverNow, expiresAt, maxMembers, bestQuote?, allQuotes?}
 
 POST /rooms/{roomId}/join            # User join
      body: {userId}
-     → {memberCount, totalHeld}
+     → {memberCount, maxMembers, estimatedHoldAmount, simulatedPrePay:true}
 
 POST /rooms/{roomId}/dispatch        # Trigger dispatch (FE gọi khi countdown=0)
+     # Idempotent: nếu room đã DISPATCHED thì trả lại result cũ
      → {bestQuote, allQuotes, bookings[]}
 
-POST /rooms/{roomId}/cancel          # Host cancel
-     → {refundedAmount}
-
-DELETE /rooms/{roomId}/members/{userId}  # Joiner leave
-
 # Booking
-GET  /bookings?userId=
+GET  /bookings?userId=               # Nice-to-have: My Bookings
      → List<Booking> {bookingId, partner, pricePaid, eta, status, roomId}
 
 GET  /bookings/{bookingId}
@@ -570,6 +625,10 @@ SUBSCRIBE /topic/room/{roomId}
               DISPATCHED {bestQuote, allQuotes}, CANCELLED
 ```
 
+> WebSocket chỉ broadcast event để UI cập nhật realtime. Flow chính vẫn phải hoạt động bằng REST + PostgreSQL; nếu WS rớt, FE refetch `GET /rooms/{roomId}`.
+
+**Nice-to-have nếu còn thời gian:** `POST /rooms/{roomId}/cancel`, `DELETE /rooms/{roomId}/members/{userId}`, `GET /bookings?userId=`/My Bookings.
+
 ---
 
 ## 7. Frontend Pages — UX Flow (Agoda/Traveloka Style)
@@ -581,7 +640,7 @@ SUBSCRIBE /topic/room/{roomId}
 | **Create Room** | `/rooms/new` | Form origin/dest + Date/time + countdown mặc định 5p | Stepper 2 bước, tóm tắt hub, preview countdown |
 | **Room Detail** | `/rooms/[roomId]` | MemberList realtime + Countdown lớn + giá aggregator | Countdown tròn (circular progress), MemberList avatar, Partner comparison table |
 | **Booking Confirm** | `/bookings/[bookingId]` | Success + driver/vehicle info + ETA | Confetti animation, card gradient xanh, nút "Về trang chủ" |
-| **My Bookings** | `/bookings` | Lịch sử + trạng thái | Timeline UI, status pill |
+| **My Bookings** | `/bookings` | Lịch sử + trạng thái (nice-to-have) | Timeline UI, status pill |
 
 **Component quan trọng:**
 
@@ -589,7 +648,7 @@ SUBSCRIBE /topic/room/{roomId}
 - `PartnerCard`: card so sánh 3 hãng (Grab/Be/Xanh SM), highlight hãng rẻ nhất
 - `MemberList`: avatar + tên + role badge (Host), realtime update qua WS
 - `HubBadge`: icon vị trí + label Hub/Điểm đón, distance từ user
-- `WalletBadge`: hiển thị số dư ví (top-right), animation khi trừ tiền pre-pay
+- `WalletBadge`: hiển thị số dư ví demo (top-right), label "Pre-pay simulated"
 - `UserSwitcher`: dropdown đổi user demo (vì không có auth)
 
 ---
@@ -615,7 +674,7 @@ SUBSCRIBE /topic/room/{roomId}
 
 | Giờ | Dev A — Backend | Dev B — Frontend |
 |---|---|---|
-| 2:00–2:45 | `MatchingService` (H3 gridDisk + filter) + `GET /rooms?nearLat=...` | Browse page wire API thật, render card thật |
+| 2:00–2:45 | `MatchingService` (H3 exact cell trước, k-ring nếu kịp) + `GET /rooms/browse` | Browse page wire API thật, render card thật |
 | 2:45–3:30 | `POST /rooms/{id}/join` + `RoomService.join()` | Create Room form hoàn chỉnh + Stepper |
 | 3:30–4:15 | `WebSocketConfig` (STOMP) + `RoomWebSocketController` broadcast JOIN/LEAVE | WS client (`@stomp/stompjs`) + Room Detail subscribe |
 | 4:15–5:00 | `RoomWebSocketController` DISPATCH event handler | CountdownTimer component (FE tick) + MemberList realtime |
@@ -630,7 +689,7 @@ SUBSCRIBE /topic/room/{roomId}
 |---|---|---|
 | 5:00–5:45 | `AggregatorService` + 3 mock clients (Grab/Be/Xanh SM) + random surge | PartnerCard component (so sánh 3 hãng) |
 | 5:45–6:30 | `POST /rooms/{id}/dispatch` + persist `bookings` | FE trigger dispatch khi countdown=0 → redirect booking confirm |
-| 6:30–7:00 | `GET /bookings` + `GET /bookings/{id}` + cancel/refund logic | Booking Confirm page + My Bookings list |
+| 6:30–7:00 | `GET /bookings/{id}` + idempotent dispatch hardening | Booking Confirm page |
 
 **Milestone 3 (T+7h):** Flow end-to-end: Host → Join → Countdown → Dispatch → Booking confirm.
 
@@ -640,12 +699,14 @@ SUBSCRIBE /topic/room/{roomId}
 
 | Giờ | Dev A — Backend | Dev B — Frontend |
 |---|---|---|
-| 7:00–7:30 | Min distance validation (2km), cancel-host logic, refund khi host hủy, joiner leave | Empty states, loading skeletons, error toasts |
-| 7:30–8:00 | Pre-pay wallet hold/release, edge case: phòng hết hạn không đủ người | WalletBadge animation, UserSwitcher dropdown |
-| 8:00–8:30 | Unit tests (MatchingService, AggregatorService) + Swagger UI | UI polish: gradient, spacing, hover effects, Agoda-style badges |
-| 8:30–9:00 | Seed realistic data + Demo script + README | Responsive (mobile), accessibility check |
+| 7:00–7:30 | Min distance validation (2km), max_members check, expired-room check | Empty states, loading skeletons, error toasts |
+| 7:30–8:00 | Seed realistic data + demo route fallback | UserSwitcher dropdown + "Use demo route" CTA |
+| 8:00–8:30 | Manual integration hardening (3 browser test), Swagger only nếu kịp | UI polish: spacing, hover effects, Agoda-style badges |
+| 8:30–9:00 | Demo script + README | Mobile smoke test cho flow chính |
 
 **Milestone 4 (T+9h):** Mọi edge case handled, UI mượt mà.
+
+**Nice-to-have chỉ làm nếu còn buffer:** cancel room, joiner leave, refund thật, wallet hold/release thật, My Bookings, unit tests, Swagger UI đầy đủ, accessibility check, full responsive, H3 k-ring phức tạp.
 
 ---
 
@@ -667,26 +728,29 @@ SUBSCRIBE /topic/room/{roomId}
 |---|---|---|
 | H3 setup phức tạp, thiếu thư viện | Thấp | Dùng `com.uber:h3:4.1.1` (Maven Central, stable) |
 | WebSocket không realtime trên Next.js dev | Trung bình | Cấu hình `next.config.js` proxy `/ws` → BE; test sớm từ Phase 2 |
-| 10 tiếng không đủ cho auth + payment | Cao | Đã loại bỏ auth; ví demo lưu DB user |
-| Seed data thiếu → demo không có gì để show | Trung bình | Phase 1 seed 5 users + 20 addresses; tạo sẵn 1-2 phòng mẫu |
+| 10 tiếng không đủ cho auth + payment | Cao | Đã loại bỏ auth; pre-pay chỉ simulated, không trừ ví thật |
+| Seed data/Goong lỗi → demo không có gì để show | Trung bình | Phase 1 seed 5 users + 20 addresses; thêm nút "Use demo route: KTX Khu A → Quận 1"; tạo sẵn 1-2 phòng mẫu |
 | Partner mock giống nhau → demo nhàm | Thấp | Mỗi partner có surge multiplier riêng (Xanh SM = 1.0 cố định, Grab 1.0-2.5) |
 | Phòng chỉ có 1 người khi countdown hết | Trung bình | Cho phép dispatch với 1 người (vẫn dispatch, giá không chia) |
+| Nhiều browser cùng gọi dispatch | Cao | `POST /dispatch` idempotent bằng transaction + `SELECT FOR UPDATE` + unique booking |
 
 ---
 
 ## 10. Deliverables cuối (Demo-ready)
 
-- [ ] Backend chạy `localhost:8080` (Swagger UI tại `/swagger-ui.html`)
+- [ ] Backend chạy `localhost:8080`
 - [ ] Frontend chạy `localhost:3000`
 - [ ] Neon PostgreSQL connection (chạy `db/init.sql` 1 lần)
 - [ ] README hướng dẫn chạy nhanh + demo script
 - [ ] 5 users demo (Lan/Mai/Khoa/Hưng/Linh) với ví tiền 500k
 - [ ] 20 địa chỉ seed (KTX Khu A/B, hub phổ biến)
+- [ ] Demo route fallback: KTX Khu A → Quận 1
 - [ ] Full flow demo: Host tạo → Mai join → countdown 5p → dispatch Xanh SM → booking confirm
 - [ ] 3 mock partner với surge pricing khác nhau (Grab/Be/Xanh SM)
-- [ ] H3 geospatial matching hoạt động (gridDisk + k-ring)
+- [ ] H3 geospatial matching hoạt động (exact cell; k-ring nếu còn thời gian)
 - [ ] WebSocket realtime (member join, dispatch broadcast)
 - [ ] UI/UX Agoda-style (gradient, glassmorphism, smooth animations)
+- [ ] Nice-to-have: Swagger UI tại `/swagger-ui.html`
 
 ---
 
@@ -735,7 +799,7 @@ SUBSCRIBE /topic/room/{roomId}
 |---|---|
 | **1. Phòng chỉ có 2-3 người, ai chịu phí còn trống?** | Hub-Ride chọn cuốc xe rẻ nhất (Xanh SM không surge). Chia đôi cho 2 người vẫn rẻ hơn 2 GrabBike. Không ép đủ 4 người mới chạy. |
 | **2. Chênh lệch thời gian chờ** | Time-boxed 5 phút. Hết 5p → chốt danh sách + dispatch. Ai chưa sẵn sàng → tự tạo phòng khác. |
-| **3. Rủi ro "Bùng" (hủy ngang)** | Pre-pay: bấm Join/Host → tiền bị khóa ngay. Hủy sau khi phòng chốt → tiền giữ lại làm quỹ dự phòng. |
+| **3. Rủi ro "Bùng" (hủy ngang)** | MVP chỉ hiển thị `estimatedHoldAmount`/`Pre-pay simulated`; ví thật và refund để Phase 2. |
 | **4. Quãng đường quá ngắn không lãi** | Minimum 2km validation. Dưới 2km → từ chối tạo phòng, hướng đến đi bộ/xe đạp. |
 
 ---
@@ -785,19 +849,19 @@ sequenceDiagram
     Goong-->>FE: [{name, place_id, formatted_address, lat, lng}, ...] (top 5)
     FE->>User: Hiển thị dropdown gợi ý
     User->>FE: Chọn "KTX Khu A - Làng ĐH QG"
-    FE->>BE: POST /api/v1/rooms {originLabel, originLat, originLng, destLabel, destLat, destLng}
+    FE->>BE: POST /api/v1/rooms {hostUserId, origin:{label,lat,lng,addressId?}, dest:{label,lat,lng,addressId?}}
     BE->>H3: h3.latLngToCell(lat, lng, res=9)
     H3-->>BE: h3Index = "89459aaa1a3ffff"
     BE->>PG: INSERT INTO addresses (label, lat, lng, h3_index) ON CONFLICT DO NOTHING
-    BE->>PG: INSERT INTO rooms (..., origin_h3, dest_h3, status='OPEN', countdown_remaining_sec=300)
-    BE-->>FE: 201 {roomId, origin, dest, countdownSec:300}
+    BE->>PG: INSERT INTO rooms (..., origin_h3, dest_h3, status='OPEN', expires_at=now()+5m, max_members=4)
+    BE-->>FE: 201 {roomId, origin, dest, serverNow, expiresAt}
 
     Note over User,BE: Sau đó User khác muốn tìm phòng gần
 
     User->>FE: Gõ "KTX Khu B" vào ô Origin (Browse page)
-    FE->>BE: GET /api/v1/rooms?originLat=10.87&originLng=106.80&destLat=10.77&destLng=106.70
-    BE->>H3: gridDisk(originH3, k=2) → 19 hex cells
-    BE->>PG: SELECT * FROM rooms WHERE status='OPEN' AND origin_h3 IN (...19 cells...)
+    FE->>BE: GET /api/v1/rooms/browse?originLat=10.87&originLng=106.80&destLat=10.77&destLng=106.70
+    BE->>H3: MVP exact originH3/destH3; optional gridDisk(k=2)
+    BE->>PG: SELECT * FROM rooms WHERE status='OPEN' AND expires_at>now()
     PG-->>BE: Top 5 phòng (sorted by Haversine distance)
     BE-->>FE: List[RoomListItem]
 ```
@@ -822,7 +886,9 @@ sequenceDiagram
 | **Place Autocomplete** | `https://rsapi.goong.io/Place/AutoComplete` | Gợi ý địa chỉ khi user gõ | Mỗi lần user gõ (debounce 300ms) |
 | **Place Detail** | `https://rsapi.goong.io/Place/Detail` | Lấy `geometry.location` (lat/lng) chính xác từ `place_id` | Khi user chọn 1 gợi ý |
 
-> **Lưu ý MVP:** Gọi trực tiếp từ Frontend (không qua Backend) để giảm latency + không tốn request vào BE. BE chỉ nhận `lat/lng` đã verify.
+> **Lưu ý MVP:** Gọi trực tiếp từ Frontend (không qua Backend) để giảm latency + không tốn request vào BE. Key `NEXT_PUBLIC_GOONG_API_KEY` sẽ lộ ở client nên chỉ chấp nhận cho hackathon. Production cần proxy qua backend, restrict domain và rate limit.
+>
+> **Demo safety:** Luôn có seed địa điểm + nút "Use demo route: KTX Khu A → Quận 1" để demo không chết khi Goong lỗi hoặc hết quota.
 
 ### 15.4 Frontend Implementation — `AddressAutocomplete.tsx`
 
@@ -1103,7 +1169,7 @@ public class H3GeoService {
 }
 ```
 
-### 15.9 Backend — Matching Service (H3 k-ring + SQL filter)
+### 15.9 Backend — Matching Service (H3 exact cell trước, k-ring sau)
 
 ```java
 // module/room/service/MatchingService.java
@@ -1116,19 +1182,18 @@ public class MatchingService {
     public List<RoomListItem> findNearbyRooms(double originLat, double originLng,
                                               double destLat, double destLng,
                                               UUID excludeUserId) {
-        // 1. Tính H3 cells trong bán kính 350m
+        // 1. MVP: exact cell trước. Nếu còn thời gian, mở rộng bằng gridDisk(k=2).
         String originH3 = h3.latLngToCell(originLat, originLng);
-        List<String> searchArea = h3.gridDisk(originH3);   // 19 cells
+        List<String> originCells = List.of(originH3);
 
-        // 2. Query DB lọc theo H3 cell + status OPEN + không phải phòng của mình
-        List<Room> candidates = roomRepository.findOpenRoomsInCells(searchArea, excludeUserId);
-
-        // 3. Filter thêm: điểm đến phải gần (cùng dest H3 cell hoặc lân cận)
         String destH3 = h3.latLngToCell(destLat, destLng);
-        List<String> destArea = h3.gridDisk(destH3);
+        List<String> destCells = List.of(destH3);
+
+        // 2. Query DB lọc theo H3 cell + status OPEN + expires_at + không phải phòng của mình
+        List<Room> candidates = roomRepository.findOpenRoomsInCells(
+            originCells, destCells, excludeUserId);
 
         return candidates.stream()
-            .filter(r -> destArea.contains(r.getDestH3()))
             .map(r -> {
                 double distance = h3.straightLineKm(
                     r.getOriginLat(), r.getOriginLng(),
@@ -1145,13 +1210,14 @@ public class MatchingService {
 ### 15.10 SQL Query chính (PostgreSQL)
 
 ```sql
--- Query tìm phòng đang mở trong 19 hex cells quanh origin
+-- Query tìm phòng đang mở, còn hạn, cùng vùng origin/destination
 SELECT *
 FROM rooms
 WHERE status = 'OPEN'
-  AND origin_h3 = ANY(@searchArea::varchar[])  -- 19 H3 cells
+  AND origin_h3 = ANY(@originCells::varchar[])
+  AND dest_h3 = ANY(@destCells::varchar[])
   AND host_user_id != @excludeUserId
-  AND created_at > NOW() - INTERVAL '10 minutes'
+  AND expires_at > NOW()
 ORDER BY created_at DESC
 LIMIT 50;
 ```
@@ -1161,7 +1227,7 @@ LIMIT 50;
 | Edge case | Cách xử lý |
 |---|---|
 | User gõ nhưng Goong không trả kết quả | Hiển thị "Không tìm thấy. Thử lại với từ khóa khác." |
-| Goong API down / timeout | Fallback: cho phép nhập tay + lấy lat/lng mặc định (VD: trung tâm TP.HCM) + cảnh báo |
+| Goong API down / timeout | Fallback seed + nút "Use demo route: KTX Khu A → Quận 1"; chỉ cho nhập tay nếu còn thời gian |
 | User chọn suggestion rồi sửa lại | Re-call Autocomplete + Place Detail khi chọn suggestion mới |
 | Lat/lng = 0,0 (chưa verify) | BE reject `POST /rooms` với 400 |
 | 2 user cùng tạo phòng giống nhau | OK — match engine vẫn tìm thấy nhau (cùng H3 cell) |
@@ -1212,22 +1278,22 @@ goong:
    ↓
 [Bước 6] User bấm "Tạo phòng"
    ↓
-[Bước 7] FE gửi POST /api/v1/rooms {originLat, originLng, destLat, destLng, ...}
+[Bước 7] FE gửi POST /api/v1/rooms {hostUserId, origin:{label,lat,lng,addressId?}, dest:{label,lat,lng,addressId?}}
    ↓
 [Bước 8] BE tính H3 index (res=9), INSERT rooms + addresses
    ↓
-[Bước 9] BE trả về roomId + countdownSec:300 → FE redirect sang /rooms/{roomId}
+[Bước 9] BE trả về roomId + serverNow + expiresAt → FE redirect sang /rooms/{roomId}
    ↓
-[Bước 10] FE bắt đầu countdown tick (setInterval 1s)
+[Bước 10] FE bắt đầu countdown tick bằng expiresAt - Date.now()
    ↓
 [-- Sau đó --]
 [Bước 11] User khác vào /rooms/browse, gõ origin của họ
    ↓
-[Bước 12] FE gọi GET /api/v1/rooms?originLat=X&originLng=Y&destLat=Z&destLng=W
+[Bước 12] FE gọi GET /api/v1/rooms/browse?originLat=X&originLng=Y&destLat=Z&destLng=W
    ↓
-[Bước 13] BE gridDisk(originH3, k=2) → 19 cells
+[Bước 13] BE tính originH3/destH3; exact match trước, k-ring nếu còn thời gian
    ↓
-[Bước 14] SQL: SELECT * FROM rooms WHERE status='OPEN' AND origin_h3 IN (...19 cells...)
+[Bước 14] SQL: SELECT * FROM rooms WHERE status='OPEN' AND expires_at>NOW() AND origin_h3/dest_h3 match
    ↓
 [Bước 15] Filter thêm: dest_h3 cùng vùng
    ↓
@@ -1334,7 +1400,8 @@ public class RoomService {
             .distanceKm(distance)
             .etaMinutes(etaMin)
             .status("OPEN")
-            .countdownRemainingSec(300)
+            .expiresAt(Instant.now().plus(Duration.ofMinutes(5)))
+            .maxMembers(4)
             .build();
 
         return roomRepository.save(room);
@@ -1371,7 +1438,6 @@ const tooShort = distance > 0 && distance < 2;
 | Quyết định | MVP (10 giờ) | Phase 2+ |
 |---|---|---|
 | **Geocoding** | Goong Place Autocomplete (FE trực tiếp) | Goong + cache |
-| **Spatial index** | H3 res=9 (in-memory gridDisk) | H3 + PostGIS nếu scale |
+| **Spatial index** | H3 res=9 exact cell; gridDisk(k=2) nếu còn thời gian | H3 + PostGIS nếu scale |
 | **Distance calc** | **Haversine × 1.2** | Goong Directions hoặc OSRM |
 | **ETA estimate** | Fix 25 km/h | Routing engine duration |
-
