@@ -34,7 +34,7 @@ export function CountdownTimer({ initialSeconds, active = true, onComplete }: Pr
   }, [onComplete, remaining]);
 
   return (
-    <div className="rounded-xl border bg-card p-5">
+    <div id="tour-countdown" className="rounded-xl border bg-card p-5">
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-sm text-muted-foreground">Countdown</p>
@@ -48,7 +48,7 @@ export function CountdownTimer({ initialSeconds, active = true, onComplete }: Pr
       </div>
       <Progress className="mt-5 h-2" value={(remaining / total) * 100} />
       <p className="mt-3 text-sm text-muted-foreground">
-        Het gio, phong se chot danh sach va goi partner re nhat.
+        When time runs out, the room locks its members and dispatches the cheapest partner.
       </p>
     </div>
   );

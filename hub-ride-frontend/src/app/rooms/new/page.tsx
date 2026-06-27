@@ -33,7 +33,7 @@ export default function NewRoomPage() {
 
   const mutation = useMutation({
     mutationFn: () => {
-      if (!origin || !dest) throw new Error("Chon diem di va diem den truoc.");
+      if (!origin || !dest) throw new Error("Choose an origin and destination first.");
       return createRoom({
         hostUserId: currentUser.id,
         originLat: origin.lat,
@@ -45,11 +45,11 @@ export default function NewRoomPage() {
       });
     },
     onSuccess: (room) => {
-      toast.success("Da tao phong.");
+      toast.success("Room created.");
       router.push(`/rooms/${room.roomId}`);
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Khong tao duoc phong.");
+      toast.error(error instanceof Error ? error.message : "Could not create the room.");
     },
   });
 
@@ -58,15 +58,15 @@ export default function NewRoomPage() {
       <section className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_0.8fr] lg:px-8">
         <div className="rounded-2xl border bg-card p-5 sm:p-6">
           <Badge variant="secondary">Host room</Badge>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight">Tao phong moi</h1>
+          <h1 className="mt-4 text-3xl font-semibold tracking-tight">Create a new room</h1>
           <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-            Chon hub don va diem den. Backend se tinh H3, tao room va tra countdown cho FE.
+            Choose pickup and destination hubs. The backend calculates H3 cells, creates the room, and returns the countdown.
           </p>
 
           <div className="mt-6 grid gap-5">
             <div className="grid gap-3 rounded-xl bg-muted/45 p-4 sm:grid-cols-[1fr_auto] sm:items-center">
               <div>
-                <p className="text-sm font-medium">Nguoi tao phong</p>
+                <p className="text-sm font-medium">Room host</p>
                 <p className="text-sm text-muted-foreground">{currentUser.fullName}</p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -76,18 +76,18 @@ export default function NewRoomPage() {
             </div>
 
             <AddressAutocomplete
-              id="origin"
-              label="Diem don"
+              id="tour-origin-input"
+              label="Pickup hub"
               value={origin}
               onChange={setOrigin}
-              placeholder="Tim KTX Khu A, Cong chinh, Quan 1..."
+              placeholder="Search KTX Khu A, Main Gate, District 1..."
             />
             <AddressAutocomplete
-              id="dest"
-              label="Diem den"
+              id="tour-destination-input"
+              label="Destination"
               value={dest}
               onChange={setDest}
-              placeholder="Tim Quan 1, Ben Thanh, Ga Sai Gon..."
+              placeholder="Search District 1, Downtown, Saigon Station..."
             />
 
             {distanceKm != null ? (
@@ -98,11 +98,11 @@ export default function NewRoomPage() {
                   <CheckCircle2 className="mt-0.5 size-5 text-primary" aria-hidden="true" />
                 )}
                 <div>
-                  <p className="font-medium">Uoc tinh tuyen: {formatKm(distanceKm)}</p>
+                  <p className="font-medium">Estimated route: {formatKm(distanceKm)}</p>
                   <p className="mt-1 text-sm text-muted-foreground">
                     {tooShort
-                      ? "Tuyen duoi 2 km, backend se tu choi tao phong."
-                      : "Du dieu kien tao phong va bat dau countdown."}
+                      ? "Routes under 2 km are rejected by the backend."
+                      : "This route is eligible. Create the room to start the countdown."}
                   </p>
                 </div>
               </div>
@@ -114,7 +114,7 @@ export default function NewRoomPage() {
               onClick={() => mutation.mutate()}
               className="h-11"
             >
-              {mutation.isPending ? "Dang tao phong..." : "Tao phong"}
+              {mutation.isPending ? "Creating room..." : "Create room"}
               <ArrowRight className="size-4" aria-hidden="true" />
             </Button>
           </div>
@@ -128,14 +128,14 @@ export default function NewRoomPage() {
                 <MapPinned className="mt-0.5 size-5 text-primary" aria-hidden="true" />
                 <div>
                   <p className="text-sm font-medium">Origin</p>
-                  <p className="text-sm text-muted-foreground">{origin?.label ?? "Chua chon"}</p>
+                  <p className="text-sm text-muted-foreground">{origin?.label ?? "Not selected"}</p>
                 </div>
               </div>
               <div className="flex gap-3 rounded-xl bg-muted/45 p-4">
                 <Route className="mt-0.5 size-5 text-primary" aria-hidden="true" />
                 <div>
                   <p className="text-sm font-medium">Destination</p>
-                  <p className="text-sm text-muted-foreground">{dest?.label ?? "Chua chon"}</p>
+                  <p className="text-sm text-muted-foreground">{dest?.label ?? "Not selected"}</p>
                 </div>
               </div>
             </div>

@@ -9,9 +9,9 @@ type Props = {
 
 export function MemberList({ members }: Props) {
   return (
-    <div className="rounded-xl border bg-card p-5">
+    <div id="tour-members" className="rounded-xl border bg-card p-5">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Thanh vien phong</h2>
+        <h2 className="text-lg font-semibold">Room members</h2>
         <Badge variant="secondary">{members.length}/4</Badge>
       </div>
       <div className="mt-4 grid gap-3">
@@ -23,7 +23,7 @@ export function MemberList({ members }: Props) {
               </Avatar>
               <div className="min-w-0">
                 <p className="truncate font-medium">{member.fullName}</p>
-                <p className="text-xs text-muted-foreground">{member.role === "HOST" ? "Chu phong" : "Joiner"}</p>
+                <p className="text-xs text-muted-foreground">{member.role === "HOST" ? "Host" : "Joiner"}</p>
               </div>
             </div>
             {member.role === "HOST" ? (

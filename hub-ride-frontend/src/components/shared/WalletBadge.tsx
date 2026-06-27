@@ -9,7 +9,7 @@ export function WalletBadge() {
   const currentUser = useUserStore((state) => state.currentUser);
 
   return (
-    <Badge variant="secondary" className="hidden h-9 gap-2 px-3 sm:inline-flex">
+    <Badge id="tour-wallet" variant="secondary" className="hidden h-9 gap-2 px-3 sm:inline-flex">
       <WalletCards className="size-4" aria-hidden="true" />
       {formatVnd(currentUser.walletBalance)}
     </Badge>

@@ -2,9 +2,9 @@ import Link from "next/link";
 import { Leaf, ShieldCheck } from "lucide-react";
 
 const footerLinks = [
-  { href: "/rooms/new", label: "Tao phong" },
-  { href: "/rooms/browse", label: "Tim phong" },
-  { href: "/bookings", label: "Lich su" },
+  { href: "/rooms/new", label: "Create room" },
+  { href: "/rooms/browse", label: "Browse rooms" },
+  { href: "/bookings", label: "Bookings" },
 ];
 
 export function Footer() {
@@ -17,7 +17,7 @@ export function Footer() {
             Hub-based shared rides for demo users
           </div>
           <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
-            Gom nhom tai hub, chot phong bang countdown, so sanh Grab, Be va Xanh SM de lay gia tot nhat.
+            Group riders at hubs, lock the room with a countdown, and compare Grab, Be, and Xanh SM for the best fare.
           </p>
         </div>
 

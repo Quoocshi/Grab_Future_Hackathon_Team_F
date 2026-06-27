@@ -4,11 +4,12 @@ import { CarFront, Menu, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserSwitcher } from "@/components/shared/UserSwitcher";
 import { WalletBadge } from "@/components/shared/WalletBadge";
+import { OnboardingLauncher } from "@/components/onboarding/OnboardingLauncher";
 
 const navItems = [
-  { href: "/rooms/new", label: "Tao phong" },
-  { href: "/rooms/browse", label: "Tim phong" },
-  { href: "/bookings", label: "Lich su" },
+  { href: "/rooms/new", label: "Create room", id: "tour-create-room" },
+  { href: "/rooms/browse", label: "Browse rooms", id: "tour-browse-rooms" },
+  { href: "/bookings", label: "Bookings", id: "tour-bookings" },
 ];
 
 export function Navbar() {
@@ -28,7 +29,9 @@ export function Navbar() {
         <nav className="hidden items-center gap-1 md:flex" aria-label="Primary navigation">
           {navItems.map((item) => (
             <Button key={item.href} asChild variant="ghost" size="lg">
-              <Link href={item.href}>{item.label}</Link>
+              <Link id={item.id} href={item.href}>
+                {item.label}
+              </Link>
             </Button>
           ))}
         </nav>
@@ -38,13 +41,16 @@ export function Navbar() {
           <div className="hidden lg:block">
             <UserSwitcher />
           </div>
+          <div className="hidden sm:block">
+            <OnboardingLauncher />
+          </div>
           <Button asChild className="hidden sm:inline-flex" size="lg">
             <Link href="/rooms/new">
               <Plus className="size-4" strokeWidth={1.8} aria-hidden="true" />
-              Tao phong
+              Create
             </Link>
           </Button>
-          <Button asChild variant="outline" size="icon-lg" className="md:hidden" aria-label="Tim phong">
+          <Button asChild variant="outline" size="icon-lg" className="md:hidden" aria-label="Browse rooms">
             <Link href="/rooms/browse">
               <Search className="size-5" strokeWidth={1.8} aria-hidden="true" />
             </Link>

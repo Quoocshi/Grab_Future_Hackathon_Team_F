@@ -97,9 +97,9 @@ export function AddressAutocomplete({ id, label, value, onChange, placeholder }:
       {open && (
         <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border bg-popover shadow-lg">
           {isError ? (
-            <div className="p-4 text-sm text-destructive">Khong tai duoc dia diem.</div>
+            <div className="p-4 text-sm text-destructive">Could not load addresses.</div>
           ) : suggestions.length === 0 && debounced ? (
-            <div className="p-4 text-sm text-muted-foreground">Khong tim thay dia diem phu hop.</div>
+            <div className="p-4 text-sm text-muted-foreground">No matching addresses found.</div>
           ) : (
             <div className="max-h-72 overflow-auto p-1">
               {suggestions.map((address) => (

@@ -9,14 +9,14 @@ type Props = {
 export function PriceCompare({ quotes = [], bestQuote }: Props) {
   if (!quotes.length) {
     return (
-      <div className="rounded-xl border border-dashed bg-card p-6 text-sm text-muted-foreground">
-        Bang gia partner se xuat hien sau khi countdown ket thuc.
+      <div id="tour-price-compare" className="rounded-xl border border-dashed bg-card p-6 text-sm text-muted-foreground">
+        Partner quotes will appear after the countdown finishes.
       </div>
     );
   }
 
   return (
-    <div className="grid gap-3">
+    <div id="tour-price-compare" className="grid gap-3">
       {quotes.map((quote) => (
         <PartnerCard
           key={quote.partner}

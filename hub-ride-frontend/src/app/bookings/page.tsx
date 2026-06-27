@@ -23,11 +23,11 @@ export default function BookingsPage() {
   return (
     <AppShell>
       <section className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="flex flex-col justify-between gap-4 rounded-2xl border bg-card p-5 sm:flex-row sm:items-center sm:p-6">
+        <div id="tour-bookings" className="flex flex-col justify-between gap-4 rounded-2xl border bg-card p-5 sm:flex-row sm:items-center sm:p-6">
           <div>
             <Badge variant="secondary">My bookings</Badge>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight">Lich su booking</h1>
-            <p className="mt-2 text-sm text-muted-foreground">Xem cac cuoc xe da dispatch theo demo user.</p>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight">Booking history</h1>
+            <p className="mt-2 text-sm text-muted-foreground">View dispatched rides for the selected demo user.</p>
           </div>
           <UserSwitcher />
         </div>
@@ -40,18 +40,18 @@ export default function BookingsPage() {
             </>
           ) : isError ? (
             <div className="rounded-2xl border bg-card p-6">
-              <p className="text-sm text-destructive">Khong tai duoc booking.</p>
+              <p className="text-sm text-destructive">Could not load bookings.</p>
               <Button className="mt-4" onClick={() => refetch()}>
-                Thu lai
+                Try again
               </Button>
             </div>
           ) : bookings.length === 0 ? (
             <div className="rounded-2xl border border-dashed bg-card p-8 text-center">
               <ReceiptText className="mx-auto size-8 text-muted-foreground" aria-hidden="true" />
-              <h2 className="mt-3 font-semibold">Chua co booking</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Tao hoac join phong, doi countdown ket thuc de co booking.</p>
+              <h2 className="mt-3 font-semibold">No bookings yet</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Create or join a room, then wait for the countdown to dispatch a booking.</p>
               <Button asChild className="mt-5">
-                <Link href="/rooms/browse">Tim phong</Link>
+                <Link href="/rooms/browse">Browse rooms</Link>
               </Button>
             </div>
           ) : (
@@ -75,7 +75,7 @@ export default function BookingsPage() {
                   <span>{formatVnd(booking.pricePaid)}</span>
                   <span className="flex items-center gap-1">
                     <CalendarClock className="size-4" aria-hidden="true" />
-                    ETA {booking.etaMinutes ?? 0} phut
+                    ETA {booking.etaMinutes ?? 0} min
                   </span>
                 </div>
               </Link>

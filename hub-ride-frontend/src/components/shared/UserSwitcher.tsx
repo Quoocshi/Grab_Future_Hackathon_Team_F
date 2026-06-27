@@ -24,7 +24,7 @@ export function UserSwitcher() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="lg" className="max-w-[180px] justify-between">
+        <Button id="tour-user-switcher" variant="outline" size="lg" className="max-w-[180px] justify-between">
           <UserRound className="size-4" aria-hidden="true" />
           <span className="truncate">{currentUser.fullName}</span>
           <ChevronDown className="size-4" aria-hidden="true" />

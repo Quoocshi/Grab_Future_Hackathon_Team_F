@@ -1,248 +1,126 @@
 # Hub-Ride FE Tasks
 
-> Scope: hoan thanh Phase 1-3 theo `docs/hub-ride-architecture.md`.
-> Backend API da co, FE can noi API that, bo dan mock ride-sharing cu, va chay duoc flow demo: Host tao phong -> Joiner join -> Countdown -> Dispatch -> Booking confirm.
+> Scope: complete Phase 1-3 from `docs/hub-ride-architecture.md`.
+> Backend APIs are available. The frontend connects to real APIs, removes old driver-centric mock flows, and supports the full demo path: Host creates a room -> Joiner joins -> Countdown -> Dispatch -> Booking confirmation.
 
 ## Tracking Rules
 
 - Status: `[ ]` todo, `[~]` in progress, `[x]` done, `[!]` blocked or needs BE/API confirmation.
-- Moi task FE phai co loading, empty, error state neu co data/API.
-- Uu tien countdownSec tu BE. `NEXT_PUBLIC_ROOM_COUNTDOWN_SECONDS` chi la fallback preview.
-- UI theo `design-taste-frontend/SKILL.md`: mot design system, shadcn/ui customized, form label nam tren input, button contrast ro, mobile collapse ro, no em-dash trong visible copy.
-- Khong them landing marketing dai. First screen phai giup user tao phong hoac tim phong.
+- Every data/API screen needs loading, empty, and error states where applicable.
+- Prefer `countdownSec` from the backend. `NEXT_PUBLIC_ROOM_COUNTDOWN_SECONDS` is only a preview fallback.
+- UI follows the existing shadcn/Tailwind design system: labels above inputs, high-contrast buttons, clear mobile collapse behavior, and no visible em dash in UI copy.
+- Do not add a long marketing landing page. The first screen should help the user create or find a room.
 
 ## Current FE Snapshot
 
-- [x] Next app shell da co `layout`, `Navbar`, `Footer`, shadcn primitives, Tailwind v4.
-- [x] Dependencies chinh da co: `@stomp/stompjs`, `sockjs-client`, `@tanstack/react-query`, `react-hook-form`, `zod`, `zustand`, `lucide-react`, `framer-motion`.
-- [x] Landing page da doi sang Hub-Ride Host/Join flow.
-- [x] Da co route `/rooms/new`, `/rooms/browse`, `/rooms/[roomId]`, `/bookings`, `/bookings/[bookingId]`.
-- [x] Da co API modules theo contract: `room.ts`, `booking.ts`, `address.ts`, `user.ts`.
-- [x] Da co types domain Hub-Ride: room, booking, address, partner, user.
-- [x] Da co WS subscription hook cho `/topic/room/{roomId}`.
+- [x] Next app shell includes `layout`, `Navbar`, `Footer`, shadcn primitives, and Tailwind v4.
+- [x] Core dependencies are installed: `@stomp/stompjs`, `sockjs-client`, `@tanstack/react-query`, `react-hook-form`, `zod`, `zustand`, `lucide-react`, `framer-motion`, `nextstepjs`, and `motion`.
+- [x] Landing page uses the Hub-Ride host/join flow.
+- [x] Routes exist for `/`, `/rooms/new`, `/rooms/browse`, `/rooms/[roomId]`, `/bookings`, and `/bookings/[bookingId]`.
+- [x] API modules follow the backend contract: `room.ts`, `booking.ts`, `address.ts`, and `user.ts`.
+- [x] Domain types exist for rooms, bookings, addresses, partners, and users.
+- [x] WebSocket subscription hook exists for `/topic/room/{roomId}`.
 
 ## Phase 1 - Foundation (T+0 -> T+2h)
 
 ### 0:00-0:30 - FE Project Baseline
 
-- [x] Verify package setup: Next, Tailwind, shadcn, pnpm scripts.
-- [x] Tao `.env.local.example` cho FE:
+- [x] Verify package setup: Next, Tailwind, shadcn, and pnpm scripts.
+- [x] Create `.env.local.example` for FE:
   - `NEXT_PUBLIC_API_BASE_URL=http://localhost:8081/api/v1`
   - `NEXT_PUBLIC_WS_URL=ws://localhost:8081/ws`
   - `NEXT_PUBLIC_GOONG_API_KEY=...`
   - `NEXT_PUBLIC_ROOM_COUNTDOWN_SECONDS=30`
-- [x] Doi app metadata/title sang Hub-Ride.
-- [x] Chot route map FE theo architecture:
-  - `/`
-  - `/rooms/new`
-  - `/rooms/browse`
-  - `/rooms/[roomId]`
-  - `/bookings`
-  - `/bookings/[bookingId]`
+- [x] Update app metadata and title to Hub-Ride.
+- [x] Finalize FE route map from the architecture document.
 
 ### 0:30-1:00 - Layout, Navbar, Footer, Landing Hero
 
-- [x] Update Navbar:
-  - Brand `Hub-Ride`
-  - Nav: `Tao phong`, `Tim phong`, `Lich su`
-  - CTA chinh tro den `/rooms/new`
-  - UserSwitcher va WalletBadge slot o desktop
-- [x] Update Footer copy sang Hub-Ride aggregator, khong con copy driver availability cu.
-- [x] Rebuild landing `/`:
-  - Hero co signal ro: hub-based shared car, host/join room, best partner dispatch
-  - Primary CTA: `Tao phong`
-  - Secondary CTA: `Tim phong`
-  - Search box nhanh cho origin/destination neu kip, hoac CTA vao route tuong ung
-- [~] Add responsive QA cho landing:
-  - Nav 1 dong tren desktop
-  - CTA khong wrap
-  - Mobile khong overlap text
+- [x] Update Navbar with Hub-Ride branding, room navigation, user switcher, wallet, guide replay, and create CTA.
+- [x] Update Footer copy for the Hub-Ride aggregator flow.
+- [x] Rebuild `/` around hub-based shared cars, host/join rooms, and best partner dispatch.
+- [~] Continue responsive QA for landing, nav wrapping, and mobile text overlap.
 
 ### 1:00-1:30 - Address/User API and SearchBox
 
-- [x] Tao `src/types/address.ts`:
-  - `Address`, `AddressKind`, `GoongSuggestion`, `GoongPlaceDetail`
-- [x] Tao `src/types/user.ts`:
-  - `DemoUser`, `WalletBalance`
-- [x] Tao `src/lib/api/address.ts`:
-  - `searchAddresses(q, limit)` -> `GET /addresses?q=&limit=`
-  - optional Goong autocomplete/detail helpers neu FE goi truc tiep Goong
-- [x] Tao `src/lib/api/user.ts`:
-  - `getUsers()` -> `GET /users`
-- [x] Tao `src/components/search/AddressAutocomplete.tsx`:
-  - Debounce 300ms
-  - Loading skeleton/icon
-  - Empty message: khong tim thay dia diem
-  - Error fallback: cho phep retry
-  - Label tren input, khong dung placeholder lam label
-- [x] Tao `src/components/shared/UserSwitcher.tsx`.
-- [x] Tao `src/components/shared/WalletBadge.tsx`.
+- [x] Create address and user domain types.
+- [x] Create address and user API clients.
+- [x] Create `AddressAutocomplete` with debounce, loading, empty, and error states.
+- [x] Create `UserSwitcher`.
+- [x] Create `WalletBadge`.
 
-### 1:30-2:00 - Create Room API and Browse Mock UI
+### 1:30-2:00 - Create Room API and Browse UI
 
-- [x] Tao `src/types/room.ts`:
-  - `RoomStatus = OPEN | DISPATCHED | CANCELLED | EXPIRED`
-  - `RoomListItem`, `RoomDetail`, `RoomMember`, `CreateRoomRequest`, `JoinRoomRequest`
-- [x] Tao `src/lib/api/room.ts`:
-  - `createRoom(payload)` -> `POST /rooms`
-  - `searchRooms(params)` -> `GET /rooms?originLat=&originLng=&destLat=&destLng=&excludeUserId=`
-  - `getRoom(roomId)` -> `GET /rooms/{roomId}`
-  - `joinRoom(roomId, userId)` -> `POST /rooms/{roomId}/join`
-  - `dispatchRoom(roomId)` -> `POST /rooms/{roomId}/dispatch`
-  - `cancelRoom(roomId)` -> `POST /rooms/{roomId}/cancel`
-  - `leaveRoom(roomId, userId)` -> `DELETE /rooms/{roomId}/members/{userId}`
-- [x] Create `/rooms/browse` UI voi API data:
-  - Filter origin/destination
-  - Room card co host, route, memberCount, countdownSec, distanceKm
-  - Empty state dep khi chua chon route hoac khong co phong
-- [x] Milestone 1 check:
-  - [x] FE browse render duoc card khi BE co data
-  - [x] Create room API function co type dung contract
-  - [x] Landing CTA dieu huong dung
+- [x] Create room domain types and room API client functions.
+- [x] Create `/rooms/browse` with route filters, room cards, empty states, and join actions.
+- [x] Milestone 1 check: browse renders API cards, create room API is typed, and landing CTAs route correctly.
 
 ## Phase 2 - Core Mechanics (T+2h -> T+5h)
 
-### 2:00-2:45 - Browse Page Wire API That
+### 2:00-2:45 - Browse Page API Wiring
 
-- [x] Noi `/rooms/browse` voi `searchRooms`.
-- [x] Query params dung contract BE:
-  - `originLat`, `originLng`, `destLat`, `destLng`, `excludeUserId`
-- [x] Add TanStack Query keys:
-  - `["rooms", "browse", originLat, originLng, destLat, destLng, userId]`
-- [x] Room card actions:
-  - `Join` button disabled neu current user la host/member
-  - Navigate `/rooms/[roomId]` sau join thanh cong
-  - Toast loi neu join fail
-- [x] Skeleton list trong luc loading.
-- [x] Error panel co retry.
+- [x] Connect `/rooms/browse` to `searchRooms`.
+- [x] Use backend query params: `originLat`, `originLng`, `destLat`, `destLng`, `excludeUserId`.
+- [x] Add TanStack Query keys for route and user-specific browse data.
+- [x] Disable `Join` when the current user is already host/member.
+- [x] Navigate to `/rooms/[roomId]` after successful join.
+- [x] Add skeleton loading and retryable error panel.
 
-### 2:45-3:30 - Create Room Form Hoan Chinh
+### 2:45-3:30 - Complete Create Room Form
 
-- [x] Tao `/rooms/new`.
-- [~] Form state voi local state. `react-hook-form` + `zod` chua can cho MVP nhanh.
-- [x] Fields:
-  - Current demo user
-  - Origin address
-  - Destination address
-  - Route preview distance voi FE Haversine
-- [x] Validate FE:
-  - Origin/destination required
-  - Lat/lng hop le
-  - Canh bao neu duoi 2km
-- [x] Submit:
-  - Call `createRoom`
-  - On success redirect `/rooms/{roomId}`
-  - Show countdownSec returned tu BE trong success state
-- [~] UI Stepper 2 buoc:
-  - Chon route
-  - Xac nhan pre-pay va tao phong
+- [x] Create `/rooms/new`.
+- [~] Use local state for MVP form flow. `react-hook-form` and `zod` remain available for a later hardening pass.
+- [x] Include demo user, origin address, destination address, and Haversine route preview.
+- [x] Validate required addresses and valid coordinates.
+- [x] Warn when route distance is under 2 km.
+- [x] Submit with `createRoom`, then redirect to `/rooms/{roomId}`.
+- [~] Keep the two-step UX lightweight for route selection and pre-pay confirmation.
 
 ### 3:30-4:15 - WebSocket Client and Room Detail Subscribe
 
-- [x] Tao `src/lib/ws/useRoomSubscription.ts`:
-  - Read `NEXT_PUBLIC_WS_URL`
-  - Connect/disconnect cleanly
-  - Subscribe `/topic/room/{roomId}`
-  - Parse events: `JOIN`, `LEAVE`, `DISPATCHED`, `CANCELLED`
-- [x] Tao `RoomEvent` type trong `src/types/room.ts`.
-- [x] Tao hook `src/lib/ws/useRoomSubscription.ts` hoac `src/hooks/useRoomSubscription.ts`.
-- [x] Tao `/rooms/[roomId]`:
-  - Fetch initial `getRoom(roomId)`
-  - Subscribe WS sau khi co roomId
-  - Update member list realtime
-  - Reconcile event payload voi TanStack cache
-- [~] Handle WS disconnected state:
-  - Badge reconnecting
-  - Fallback refetch room detail
+- [x] Create `src/lib/ws/useRoomSubscription.ts`.
+- [x] Read `NEXT_PUBLIC_WS_URL`.
+- [x] Connect and disconnect cleanly.
+- [x] Subscribe to `/topic/room/{roomId}`.
+- [x] Parse room events: `JOIN`, `LEAVE`, `DISPATCHED`, and `CANCELLED`.
+- [x] Create `/rooms/[roomId]` with initial fetch, WebSocket subscription, and TanStack cache reconciliation.
+- [~] Continue browser demo testing for disconnected/reconnecting states.
 
 ### 4:15-5:00 - Countdown and MemberList Realtime
 
-- [x] Tao `src/components/room/CountdownTimer.tsx`:
-  - Input `initialSeconds`
-  - FE tick bang `setInterval`
-  - Clear interval on unmount
-  - Change visual urgency khi `< 60s`
-  - Call `onComplete` dung 1 lan
-- [x] Tao `src/components/room/MemberList.tsx`:
-  - Avatar initials
-  - Host badge
-  - Joiner count
-  - Empty/solo state
-- [x] Room detail layout:
-  - Route summary
-  - Countdown
-  - MemberList
-  - Join/Leave/Cancel actions theo role
-- [x] Milestone 2 API check:
-  - [x] Host tao phong thanh cong
-  - [x] Joiner browse thay phong
-  - [x] Joiner join thanh cong
-  - [~] Ca 2 browser thay member list update realtime can browser demo test
-  - [x] Countdown tick on client va khong bi double interval
+- [x] Create `CountdownTimer` with client ticking, cleanup on unmount, urgency state, and single `onComplete` call.
+- [x] Create `MemberList` with initials, host badge, joiner count, and solo state.
+- [x] Build room detail layout with route summary, countdown, member list, and role-aware actions.
+- [x] Milestone 2 API check: host creates room, joiner sees room, joiner joins, countdown ticks once, and room detail updates from cache/events.
 
 ## Phase 3 - Aggregator + Booking (T+5h -> T+7h)
 
 ### 5:00-5:45 - Partner Comparison Components
 
-- [x] Tao `src/types/partner.ts`:
-  - `Partner = GRAB | BE | XANH_SM`
-  - `PartnerQuote { partner, totalPrice, etaMinutes, surgeMultiplier, vehicleType }`
-  - `DispatchResult { bestQuote, allQuotes, bookings }`
-- [x] Tao `src/components/room/PartnerCard.tsx`:
-  - Logo/icon per partner
-  - Total price, per-person estimate, ETA, vehicleType
-  - Highlight best partner
-- [x] Tao `src/components/room/PriceCompare.tsx`:
-  - Render allQuotes
-  - Loading state before dispatch
-  - Empty state before countdown complete
-- [x] Format money/time helpers:
-  - `src/lib/utils/format.ts`
-  - VND formatter
-  - countdown formatter `mm:ss`
+- [x] Create partner quote and dispatch result types.
+- [x] Create `PartnerCard` with partner, total price, per-rider estimate, ETA, vehicle type, and best quote highlight.
+- [x] Create `PriceCompare` with loading and empty states.
+- [x] Add money, distance, and countdown format helpers.
 
-### 5:45-6:30 - Dispatch Trigger and Redirect Booking Confirm
+### 5:45-6:30 - Dispatch Trigger and Booking Redirect
 
-- [x] Khi CountdownTimer complete:
-  - Call `dispatchRoom(roomId)`
-  - Prevent duplicate dispatch with ref/state guard
-  - Show dispatch loading state
-- [x] On `DISPATCHED` WS event:
-  - Update room status
-  - Render `PriceCompare`
-  - Find booking for current user
-  - Redirect `/bookings/{bookingId}` neu booking co trong response
-- [~] Handle edge case:
-  - Dispatch API fail -> retry CTA
-  - WS event den truoc HTTP response -> cache reconcile
-  - Booking list empty -> stay room detail va show error
-- [x] Confirm BE response shape thuc te neu khac docs.
+- [x] Dispatch the room when the countdown completes.
+- [x] Prevent duplicate dispatch with a ref guard.
+- [x] Render dispatch loading state.
+- [x] Handle `DISPATCHED` WebSocket events by updating room status, rendering price comparison, finding the current user's booking, and redirecting when available.
+- [~] Continue hardening edge cases where dispatch HTTP and WebSocket responses arrive out of order.
 
-### 6:30-7:00 - Booking Confirm and My Bookings
+### 6:30-7:00 - Booking Confirmation and My Bookings
 
-- [x] Tao `src/types/booking.ts`:
-  - `BookingStatus = CONFIRMED | COMPLETED | CANCELLED`
-  - `Booking`, `BookingDetail`
-- [x] Tao `src/lib/api/booking.ts`:
-  - `getBookings(userId)` -> `GET /bookings?userId=`
-  - `getBooking(bookingId)` -> `GET /bookings/{bookingId}`
-- [x] Tao `/bookings/[bookingId]`:
-  - Success state
-  - Partner selected
-  - Price paid
-  - ETA
-  - Route and room summary
-  - CTA ve home hoac my bookings
-- [x] Tao `/bookings`:
-  - User filter via UserSwitcher/current user
-  - Booking timeline/list
-  - Empty state khi user chua co booking
-  - Error retry
-- [x] Milestone 3 API check:
-  - [x] End-to-end API flow chay duoc
-  - [x] Countdown 30s trigger dispatch dung 1 lan bang ref guard
-  - [x] Booking data tra dung partner, gia, ETA
-  - [x] My Bookings API hien booking moi tao
+- [x] Create booking types and booking API client functions.
+- [x] Create `/bookings/[bookingId]` with success state, partner, price, ETA, route, room summary, and CTAs.
+- [x] Create `/bookings` with user filtering, booking list, empty state, error state, and retry.
+- [x] Milestone 3 API check: countdown dispatch creates bookings, confirmed bookings show in booking detail and history.
+
+## Phase 4 - UI Language and Onboarding
+
+- [x] English-only UI copy across active frontend pages and components.
+- [x] NextStepJS onboarding tour with first-run auto-start and persistent Guide replay from the navbar.
 
 ## API Contract Checklist
 
@@ -261,27 +139,31 @@
 
 ## Shared FE Quality Checklist
 
-- [x] All API calls have typed request/response.
-- [x] No old `RideRequest`/driver-centric copy remains on Hub-Ride pages.
-- [x] TanStack Query cache invalidates/refetches after create/join/dispatch/cancel/leave.
-- [x] All forms have labels, helper/error text, keyboard focus states.
-- [x] All async pages include loading, empty, error.
+- [x] All API calls have typed request/response shapes.
+- [x] No old `RideRequest` or driver-centric copy remains on Hub-Ride pages.
+- [x] TanStack Query cache invalidates/refetches after create, join, dispatch, cancel, and leave.
+- [x] All forms have labels, helper/error text, and keyboard focus states.
+- [x] All async pages include loading, empty, and error states.
 - [~] Button labels fit one line on desktop and mobile.
-- [ ] Responsive check for 390px, 768px, 1440px.
-- [ ] Reduced motion respected for non-essential animation.
-- [x] No visible em-dash or en-dash in UI copy.
-- [ ] No fake precise numbers unless from API/mock seed.
+- [ ] Responsive check for 390px, 768px, and 1440px.
+- [ ] Reduced motion is respected for non-essential animation.
+- [x] No visible em dash or en dash in UI copy.
+- [x] English-only active UI copy, excluding API seed names and returned location data.
+- [ ] No fake precise numbers unless they come from API/mock seed data.
 - [x] Run `pnpm lint`.
 - [x] Run `pnpm build`.
+- [x] Run `docker build -t hub-ride-frontend:test ./hub-ride-frontend`.
 
-## Demo Script for Phase 1-3
+## Demo Script for Phase 1-4
 
 1. Start BE at `localhost:8081` and FE at `localhost:3000`.
-2. Browser A select user Lan, open `/rooms/new`.
-3. Lan picks `KTX Khu A` -> `Quận 1`, creates room.
-4. Browser B select user Mai, open `/rooms/browse`.
-5. Mai searches same route, joins Lan room.
-6. Both browsers open `/rooms/{roomId}` and see members update.
-7. Countdown reaches 0, FE calls dispatch.
-8. Room shows partner comparison and redirects to booking confirmation.
-9. Open `/bookings` for Lan and Mai, verify confirmed booking appears.
+2. Open `/` and confirm the first-run onboarding tour appears once.
+3. Use the Guide button in the navbar to replay the onboarding tour.
+4. Browser A selects user Lan and opens `/rooms/new`.
+5. Lan picks `KTX Khu A` -> `District 1`, then creates a room.
+6. Browser B selects user Mai and opens `/rooms/browse`.
+7. Mai searches the same route and joins Lan's room.
+8. Both browsers open `/rooms/{roomId}` and see room members update.
+9. Countdown reaches 0 and FE calls dispatch.
+10. Room shows partner comparison and redirects to booking confirmation.
+11. Open `/bookings` for Lan and Mai, then verify the confirmed booking appears.

@@ -77,12 +77,12 @@ export default function RoomDetailPage() {
             }
           : current,
       );
-      toast.success("Da dispatch partner tot nhat.");
+      toast.success("Best partner dispatched.");
       await redirectToCurrentBooking(result.roomId);
     },
     onError: async (error) => {
       dispatchingRef.current = false;
-      toast.error(error instanceof Error ? error.message : "Dispatch that bai.");
+      toast.error(error instanceof Error ? error.message : "Dispatch failed.");
       await roomQuery.refetch();
     },
   });
@@ -90,28 +90,28 @@ export default function RoomDetailPage() {
   const joinMutation = useMutation({
     mutationFn: () => joinRoom(roomId!, currentUser.id),
     onSuccess: async () => {
-      toast.success("Da join phong.");
+      toast.success("Joined the room.");
       await roomQuery.refetch();
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Khong join duoc phong."),
+    onError: (error) => toast.error(error instanceof Error ? error.message : "Could not join the room."),
   });
 
   const leaveMutation = useMutation({
     mutationFn: () => leaveRoom(roomId!, currentUser.id),
     onSuccess: async () => {
-      toast.success("Da roi phong.");
+      toast.success("Left the room.");
       await roomQuery.refetch();
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Khong roi phong duoc."),
+    onError: (error) => toast.error(error instanceof Error ? error.message : "Could not leave the room."),
   });
 
   const cancelMutation = useMutation({
     mutationFn: () => cancelRoom(roomId!, currentUser.id),
     onSuccess: () => {
-      toast.success("Da huy phong.");
+      toast.success("Room cancelled.");
       router.push("/rooms/browse");
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Khong huy duoc phong."),
+    onError: (error) => toast.error(error instanceof Error ? error.message : "Could not cancel the room."),
   });
 
   const onRoomEvent = useCallback(
@@ -154,9 +154,9 @@ export default function RoomDetailPage() {
           </div>
         ) : roomQuery.isError || !memberSafeRoom ? (
           <div className="rounded-2xl border bg-card p-8">
-            <h1 className="text-xl font-semibold">Khong tai duoc phong</h1>
+            <h1 className="text-xl font-semibold">Could not load the room</h1>
             <Button className="mt-4" onClick={() => roomQuery.refetch()}>
-              Thu lai
+              Try again
             </Button>
           </div>
         ) : (
@@ -168,25 +168,25 @@ export default function RoomDetailPage() {
                     <Badge variant={memberSafeRoom.status === "OPEN" ? "secondary" : "default"}>
                       {memberSafeRoom.status}
                     </Badge>
-                    <h1 className="mt-4 text-3xl font-semibold tracking-tight">Phong chia xe</h1>
+                    <h1 className="mt-4 text-3xl font-semibold tracking-tight">Shared ride room</h1>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      Host {memberSafeRoom.host.fullName}, {memberSafeRoom.members.length} thanh vien dang trong phong.
+                      Hosted by {memberSafeRoom.host.fullName}, with {memberSafeRoom.members.length} members in the room.
                     </p>
                   </div>
                   <div className="flex gap-2">
                     {!isMember && memberSafeRoom.status === "OPEN" ? (
                       <Button disabled={joinMutation.isPending} onClick={() => joinMutation.mutate()}>
-                        Join phong
+                        Join room
                       </Button>
                     ) : null}
                     {isMember && !isHost && memberSafeRoom.status === "OPEN" ? (
                       <Button variant="outline" disabled={leaveMutation.isPending} onClick={() => leaveMutation.mutate()}>
-                        Roi phong
+                        Leave room
                       </Button>
                     ) : null}
                     {isHost && memberSafeRoom.status === "OPEN" ? (
                       <Button variant="destructive" disabled={cancelMutation.isPending} onClick={() => cancelMutation.mutate()}>
-                        Huy phong
+                        Cancel room
                       </Button>
                     ) : null}
                   </div>
@@ -196,14 +196,14 @@ export default function RoomDetailPage() {
                   <div className="flex gap-3 rounded-xl bg-muted/45 p-4">
                     <MapPinned className="mt-0.5 size-5 text-primary" aria-hidden="true" />
                     <div>
-                      <p className="text-sm font-medium">Diem don</p>
+                      <p className="text-sm font-medium">Pickup hub</p>
                       <p className="text-sm text-muted-foreground">{memberSafeRoom.origin.label}</p>
                     </div>
                   </div>
                   <div className="flex gap-3 rounded-xl bg-muted/45 p-4">
                     <Route className="mt-0.5 size-5 text-primary" aria-hidden="true" />
                     <div>
-                      <p className="text-sm font-medium">Diem den</p>
+                      <p className="text-sm font-medium">Destination</p>
                       <p className="text-sm text-muted-foreground">{memberSafeRoom.dest.label}</p>
                     </div>
                   </div>
@@ -211,7 +211,7 @@ export default function RoomDetailPage() {
 
                 <div className="mt-5 flex flex-wrap gap-2 text-sm text-muted-foreground">
                   <Badge variant="outline">{formatKm(memberSafeRoom.distanceKm)}</Badge>
-                  <Badge variant="outline">ETA {memberSafeRoom.etaMinutes ?? 0} phut</Badge>
+                  <Badge variant="outline">ETA {memberSafeRoom.etaMinutes ?? 0} min</Badge>
                   <Badge variant="outline">Room {memberSafeRoom.roomId.slice(0, 8)}</Badge>
                 </div>
               </div>
@@ -230,11 +230,11 @@ export default function RoomDetailPage() {
                 <div className="rounded-xl border bg-card p-5">
                   <div className="flex items-center gap-3">
                     <CarFront className="size-5 text-primary" aria-hidden="true" />
-                    <h2 className="font-semibold">Phong da dispatch</h2>
+                    <h2 className="font-semibold">Room dispatched</h2>
                   </div>
                   <Button asChild className="mt-5">
                     <Link href="/bookings">
-                      Xem booking
+                      View bookings
                       <ArrowRight className="size-4" aria-hidden="true" />
                     </Link>
                   </Button>
@@ -243,7 +243,7 @@ export default function RoomDetailPage() {
               {dispatchMutation.isPending ? (
                 <div className="flex items-center gap-3 rounded-xl border bg-card p-4 text-sm">
                   <Loader2 className="size-4 animate-spin text-primary" aria-hidden="true" />
-                  Dang dispatch partner...
+                  Dispatching partner...
                 </div>
               ) : null}
               <MemberList members={memberSafeRoom.members} />

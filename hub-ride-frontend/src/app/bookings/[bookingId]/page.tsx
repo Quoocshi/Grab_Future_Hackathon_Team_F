@@ -33,9 +33,9 @@ export default function BookingDetailPage() {
           <Skeleton className="h-96 rounded-2xl" />
         ) : isError || !booking ? (
           <div className="rounded-2xl border bg-card p-8">
-            <h1 className="text-xl font-semibold">Khong tai duoc booking</h1>
+            <h1 className="text-xl font-semibold">Could not load the booking</h1>
             <Button className="mt-4" onClick={() => refetch()}>
-              Thu lai
+              Try again
             </Button>
           </div>
         ) : (
@@ -46,7 +46,7 @@ export default function BookingDetailPage() {
             <Badge className="mt-6">{booking.status}</Badge>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight">Booking confirmed</h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Partner da duoc chot. Hay co mat tai hub dung gio de len xe.
+              The partner is locked in. Arrive at the hub on time for pickup.
             </p>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
@@ -63,16 +63,16 @@ export default function BookingDetailPage() {
               <div className="rounded-xl bg-muted/45 p-4">
                 <CalendarClock className="size-5 text-primary" aria-hidden="true" />
                 <p className="mt-3 text-sm text-muted-foreground">ETA</p>
-                <p className="font-semibold">{booking.etaMinutes ?? 0} phut</p>
+                <p className="font-semibold">{booking.etaMinutes ?? 0} min</p>
               </div>
             </div>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button asChild>
-                <Link href="/bookings">Xem lich su</Link>
+                <Link href="/bookings">View history</Link>
               </Button>
               <Button asChild variant="outline">
-                <Link href="/">Ve trang chu</Link>
+                <Link href="/">Back home</Link>
               </Button>
             </div>
           </div>

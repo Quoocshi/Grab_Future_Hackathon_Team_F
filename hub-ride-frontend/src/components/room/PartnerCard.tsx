@@ -32,20 +32,20 @@ export function PartnerCard({ quote, best }: Props) {
               <p className="text-xs text-muted-foreground">{quote.vehicleType ?? "CAR_4"}</p>
             </div>
           </div>
-          {best ? <Badge>Re nhat</Badge> : null}
+          {best ? <Badge>Best fare</Badge> : null}
         </div>
         <div className="grid grid-cols-3 gap-3 text-sm">
           <div>
-            <p className="text-muted-foreground">Tong</p>
+              <p className="text-muted-foreground">Total</p>
             <p className="mt-1 font-semibold">{formatVnd(quote.totalPrice)}</p>
           </div>
           <div>
-            <p className="text-muted-foreground">Moi nguoi</p>
+              <p className="text-muted-foreground">Per rider</p>
             <p className="mt-1 font-semibold">{formatVnd(perPerson)}</p>
           </div>
           <div>
             <p className="text-muted-foreground">ETA</p>
-            <p className="mt-1 font-semibold">{quote.etaMinutes} phut</p>
+            <p className="mt-1 font-semibold">{quote.etaMinutes} min</p>
           </div>
         </div>
       </CardContent>
