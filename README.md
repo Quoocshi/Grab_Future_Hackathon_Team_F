@@ -1,4 +1,4 @@
-# README
+# TÊN APP
 
 ## 1. Problem
 
@@ -6,35 +6,49 @@
 
 - Ho Chi Minh City’s severe road density (**2.38 km/km²**) triggers heavy daily traffic jams that choke the entire metro area. This is a primary driver of the city's air pollution, dumping **13 million tons of CO₂** into the atmosphere annually.
 
----
 
 ## 2. What is our Solution?
 
-Our solution is a **ridesharing platform** acting as an intermediary service layer that connects ride-hailing apps like:
+Our solution is a **ridesharing platform** acting as an intermediary service layer that connects ride-hailing apps like: Grab, Be, Xanh SM, Tada,...
 
-- Grab
-- Be
-- Xanh SM
-- Tada
-- ...
-
-### Impact
+Impact
 
 - Minimize the number of single-passenger vehicles on the road, cutting down traffic jams and lowering traffic-related CO₂ emissions.
 
 - Foster a cultural shift from the habit of solo riding and replace it with a **hub-based riding style** that contributes to a healthier, eco-conscious urban community.
 
----
 
 ## 3. How it Addresses the Problems
 
 ### For Customers
 
-We solve the customer’s biggest mobility pain point: **affordable rides during peak demand**.
+- We solve the customer’s biggest mobility pain point: **affordable rides during peak demand**. By grouping passengers with similar routes, one expensive solo ride becomes **40–60% cheaper**.
+#### Ridesharing Pricing Formula
 
-By grouping passengers with similar routes, one expensive solo ride becomes **40–60% cheaper**.
+$$
+Fare_{share}=\frac{Fare_{solo}\times(1+\lambda)}{N}
+$$
 
----
+Where:
+
+- $Fare_{share}$: the amount each passenger pays when sharing a ride
+- $Fare_{solo}$: the fare of the trip if a passenger travels alone
+- $N$: the number of passengers sharing the same ride
+- $\lambda$: platform fee + risk compensation factor (e.g., 0.2 = 20%)
+
+
+#### Discount Rate Formula
+
+$$
+Discount(N)=1-\frac{1+\lambda}{N}
+$$
+
+Where:
+
+- $Discount(N)$: the discount percentage applied to each passenger
+- $N$: the number of passengers in the shared ride
+- $\lambda$: the system maintenance factor
+
 
 ### For the Urban Environment
 
@@ -50,7 +64,6 @@ By grouping passengers with similar routes, one expensive solo ride becomes **40
 
 - Ridesplitting reduces the emission factors per ride-km of ridesourcing by **28.7–32.5% on average**.
 
----
 
 # 4. How it Works
 
@@ -68,7 +81,6 @@ If no matching trip exists:
 - Become the **Host**.
 - Start a new Room that other passengers can join.
 
----
 
 ## Step 2: Hub-based Routing (No Door-to-Door)
 
@@ -78,7 +90,6 @@ To avoid forcing drivers to pick up individual passengers:
 - Passengers walk a short distance to their assigned Hub to catch the ride.
 - After drop-off, passengers walk from the Hub to their destination.
 
----
 
 ## Step 3: Price Aggregator
 
@@ -88,7 +99,6 @@ The platform automatically:
 - Bundles groups of customers together.
 - Allows users to choose the cheapest available option.
 
----
 
 ## Step 4: Penalty System
 
