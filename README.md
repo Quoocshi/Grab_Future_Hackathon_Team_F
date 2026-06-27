@@ -23,32 +23,6 @@ Impact
 ### For Customers
 
 - We solve the customer’s biggest mobility pain point: **affordable rides during peak demand**. By grouping passengers with similar routes, one expensive solo ride becomes **40–60% cheaper**.
-#### Ridesharing Pricing Formula
-
-$$
-Fare_{share}=\frac{Fare_{solo}\times(1+\lambda)}{N}
-$$
-
-Where:
-
-- $Fare_{share}$: the amount each passenger pays when sharing a ride
-- $Fare_{solo}$: the total fare of a standard 3-seater car ride if booked individually.
-- $N$: the number of passengers sharing the same ride
-- $\lambda$: platform fee + risk compensation factor (e.g., 0.2 = 20%)
-
-
-#### Discount Rate Formula
-
-$$
-Discount(N)=1-\frac{1+\lambda}{N}
-$$
-
-Where:
-
-- $Discount(N)$: the discount percentage applied to each passenger
-- $N$: the number of passengers in the shared ride
-- $\lambda$: platform fee + risk compensation factor (e.g., 0.2 = 20%)
-
 
 ### For the Urban Environment
 
