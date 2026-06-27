@@ -17,7 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cancelRoom, dispatchRoom, getRoom, joinRoom, leaveRoom } from "@/lib/api/room";
 import { getBookings } from "@/lib/api/booking";
 import { useUserStore } from "@/lib/store/userStore";
-import { formatKm } from "@/lib/utils/format";
+import { formatKm, formatVnd } from "@/lib/utils/format";
 import { useRoomSubscription } from "@/lib/ws/useRoomSubscription";
 import type { DispatchResult, RoomEvent } from "@/types/room";
 
@@ -67,6 +67,7 @@ export default function RoomDetailPage() {
   const dispatchMutation = useMutation({
     mutationFn: () => dispatchRoom(roomId!),
     onSuccess: async (result: DispatchResult) => {
+      await queryClient.invalidateQueries({ queryKey: ["users"] });
       queryClient.setQueryData(["rooms", "detail", roomId], (current: typeof room) =>
         current
           ? {
@@ -82,6 +83,7 @@ export default function RoomDetailPage() {
     },
     onError: async (error) => {
       dispatchingRef.current = false;
+      await queryClient.invalidateQueries({ queryKey: ["users"] });
       toast.error(error instanceof Error ? error.message : "Dispatch failed.");
       await roomQuery.refetch();
     },
@@ -90,6 +92,7 @@ export default function RoomDetailPage() {
   const joinMutation = useMutation({
     mutationFn: () => joinRoom(roomId!, currentUser.id),
     onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["users"] });
       toast.success("Joined the room.");
       await roomQuery.refetch();
     },
@@ -98,8 +101,9 @@ export default function RoomDetailPage() {
 
   const leaveMutation = useMutation({
     mutationFn: () => leaveRoom(roomId!, currentUser.id),
-    onSuccess: async () => {
-      toast.success("Left the room.");
+    onSuccess: async (result) => {
+      await queryClient.invalidateQueries({ queryKey: ["users"] });
+      toast.success(`${formatVnd(result.refundedAmount)} returned to your wallet.`);
       await roomQuery.refetch();
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : "Could not leave the room."),
@@ -107,8 +111,9 @@ export default function RoomDetailPage() {
 
   const cancelMutation = useMutation({
     mutationFn: () => cancelRoom(roomId!, currentUser.id),
-    onSuccess: () => {
-      toast.success("Room cancelled.");
+    onSuccess: async (result) => {
+      await queryClient.invalidateQueries({ queryKey: ["users"] });
+      toast.success(`Room cancelled. ${formatVnd(result.refundedAmount)} refunded.`);
       router.push("/rooms/browse");
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : "Could not cancel the room."),
@@ -128,8 +133,12 @@ export default function RoomDetailPage() {
               }
             : current,
         );
+        await queryClient.invalidateQueries({ queryKey: ["users"] });
         await redirectToCurrentBooking(result.roomId);
         return;
+      }
+      if (event.event === "EXPIRED" || event.event === "CANCELLED" || event.event === "LEAVE") {
+        await queryClient.invalidateQueries({ queryKey: ["users"] });
       }
       await roomQuery.refetch();
     },
@@ -185,7 +194,15 @@ export default function RoomDetailPage() {
                       </Button>
                     ) : null}
                     {isHost && memberSafeRoom.status === "OPEN" ? (
-                      <Button variant="destructive" disabled={cancelMutation.isPending} onClick={() => cancelMutation.mutate()}>
+                      <Button
+                        variant="destructive"
+                        disabled={cancelMutation.isPending}
+                        onClick={() => {
+                          if (window.confirm("Cancel this room and refund every rider's pre-pay hold?")) {
+                            cancelMutation.mutate();
+                          }
+                        }}
+                      >
                         Cancel room
                       </Button>
                     ) : null}
@@ -230,14 +247,26 @@ export default function RoomDetailPage() {
                 <div className="rounded-xl border bg-card p-5">
                   <div className="flex items-center gap-3">
                     <CarFront className="size-5 text-primary" aria-hidden="true" />
-                    <h2 className="font-semibold">Room dispatched</h2>
+                    <h2 className="font-semibold">
+                      {memberSafeRoom.status === "DISPATCHED"
+                        ? "Room dispatched"
+                        : memberSafeRoom.status === "EXPIRED"
+                          ? "Room expired — pre-pay refunded"
+                          : "Room cancelled — pre-pay refunded"}
+                    </h2>
                   </div>
-                  <Button asChild className="mt-5">
-                    <Link href="/bookings">
-                      View bookings
-                      <ArrowRight className="size-4" aria-hidden="true" />
-                    </Link>
-                  </Button>
+                  {memberSafeRoom.status === "DISPATCHED" ? (
+                    <Button asChild className="mt-5">
+                      <Link href="/bookings">
+                        View bookings
+                        <ArrowRight className="size-4" aria-hidden="true" />
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button asChild variant="outline" className="mt-5">
+                      <Link href="/rooms/browse">Browse other rooms</Link>
+                    </Button>
+                  )}
                 </div>
               )}
               {dispatchMutation.isPending ? (
