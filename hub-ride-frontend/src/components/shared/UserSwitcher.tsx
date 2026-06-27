@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, UserRound } from "lucide-react";
 import { getUsers } from "@/lib/api/user";
@@ -20,6 +21,16 @@ export function UserSwitcher() {
     queryKey: ["users"],
     queryFn: getUsers,
   });
+
+  useEffect(() => {
+    const freshUser = users.find((user) => user.id === currentUser.id);
+    if (freshUser && (
+      freshUser.fullName !== currentUser.fullName ||
+      freshUser.walletBalance !== currentUser.walletBalance
+    )) {
+      setCurrentUser(freshUser);
+    }
+  }, [currentUser, setCurrentUser, users]);
 
   return (
     <DropdownMenu>
