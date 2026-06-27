@@ -5,6 +5,7 @@ import com.hubride.common.enums.MemberRole;
 import com.hubride.common.enums.RoomStatus;
 import com.hubride.common.exception.AppException;
 import com.hubride.common.exception.ErrorCode;
+import com.hubride.common.exception.RoomExpiredException;
 import com.hubride.module.aggregator.AggregatorService;
 import com.hubride.module.aggregator.PartnerQuote;
 import com.hubride.module.room.dto.DispatchResultResponse;
@@ -34,11 +35,13 @@ public class DispatchService {
     private final RoomMemberRepository roomMemberRepository;
     private final BookingRepository bookingRepository;
     private final AggregatorService aggregatorService;
+    private final RoomWalletService walletService;
+    private final RoomService roomService;
     private final SimpMessagingTemplate messagingTemplate;
 
-    @Transactional
+    @Transactional(noRollbackFor = RoomExpiredException.class)
     public DispatchResultResponse dispatch(UUID roomId) {
-        Room room = roomRepository.findById(roomId)
+        Room room = roomRepository.findByIdForUpdate(roomId)
                 .orElseThrow(() -> new AppException(ErrorCode.ROOM_NOT_FOUND));
 
         if (room.getStatus() == RoomStatus.DISPATCHED) {
@@ -48,19 +51,33 @@ public class DispatchService {
             throw new AppException(ErrorCode.ROOM_NOT_OPEN);
         }
 
+        if (roomService.remainingSeconds(room) > 0) {
+            throw new AppException(ErrorCode.ROOM_COUNTDOWN_ACTIVE);
+        }
+
         List<RoomMember> members = roomMemberRepository.findByRoomId(roomId);
-        if (members.isEmpty()) {
-            throw new AppException(ErrorCode.DISPATCH_FAILED);
+        if (members.size() < 2) {
+            BigDecimal refundedAmount = walletService.refundAll(members);
+            room.setStatus(RoomStatus.EXPIRED);
+            roomRepository.save(room);
+            messagingTemplate.convertAndSend(
+                    "/topic/room/" + roomId,
+                    new WsPayload("EXPIRED", java.util.Map.of(
+                            "roomId", roomId.toString(),
+                            "refundedAmount", refundedAmount)));
+            throw new RoomExpiredException();
         }
 
         AggregatorService.QuoteResult result = aggregatorService.getQuotes(room, members.size());
+        BigDecimal perPersonFare = BigDecimal.valueOf(result.perPersonPrice());
+        members.forEach(member -> walletService.settle(member, perPersonFare));
 
         List<Booking> bookings = members.stream()
                 .map(m -> Booking.builder()
                         .roomId(room.getId())
                         .userId(m.getUserId())
                         .partner(result.best().partner())
-                        .pricePaid(BigDecimal.valueOf(result.perPersonPrice()))
+                        .pricePaid(perPersonFare)
                         .vehicleType(result.best().vehicleType())
                         .etaMinutes(result.best().etaMinutes())
                         .status(BookingStatus.CONFIRMED)
