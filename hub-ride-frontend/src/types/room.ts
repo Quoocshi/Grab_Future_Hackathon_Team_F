@@ -66,6 +66,10 @@ export type JoinRoomResponse = {
   totalHeld: number;
 };
 
+export type RefundResponse = {
+  refundedAmount: number;
+};
+
 export type DispatchBooking = {
   bookingId: string;
   partner: string;
@@ -82,7 +86,7 @@ export type DispatchResult = {
 };
 
 export type RoomEvent = {
-  event: "JOIN" | "LEAVE" | "DISPATCHED" | "CANCELLED" | string;
+  event: "JOIN" | "LEAVE" | "DISPATCHED" | "CANCELLED" | "EXPIRED" | string;
   payload?: unknown;
 };
 

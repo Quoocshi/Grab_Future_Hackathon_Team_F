@@ -4,6 +4,7 @@ import type {
   CreateRoomResponse,
   DispatchResult,
   JoinRoomResponse,
+  RefundResponse,
   RoomDetail,
   RoomListItem,
 } from "@/types/room";
@@ -56,13 +57,13 @@ export function dispatchRoom(roomId: string) {
 }
 
 export function cancelRoom(roomId: string, userId: string) {
-  return requestJson<void>(`/rooms/${roomId}/cancel?userId=${userId}`, {
+  return requestJson<RefundResponse>(`/rooms/${roomId}/cancel?userId=${userId}`, {
     init: { method: "POST" },
   });
 }
 
 export function leaveRoom(roomId: string, userId: string) {
-  return requestJson<void>(`/rooms/${roomId}/members/${userId}`, {
+  return requestJson<RefundResponse>(`/rooms/${roomId}/members/${userId}`, {
     init: { method: "DELETE" },
   });
 }
