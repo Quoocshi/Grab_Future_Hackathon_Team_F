@@ -15,16 +15,19 @@ export default function Home() {
   return (
     <AppShell>
       <section id="tour-hero" className="mx-auto grid min-h-[calc(100dvh-9rem)] w-full max-w-7xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-[1fr_0.9fr] md:items-center lg:px-8">
-        <div>
-          <Badge variant="secondary" className="mb-5">
-            Hub-Ride MVP
-          </Badge>
-          <h1 className="max-w-3xl text-4xl font-semibold leading-tight tracking-tight text-balance sm:text-5xl lg:text-6xl">
-            Share a car from hub to hub, with the fare split by room.
+        <header className="text-center md:col-span-2">
+          <h1 className="mx-auto max-w-6xl text-balance text-5xl font-bold leading-[1.05] tracking-[-0.045em] sm:text-6xl lg:text-[5.35rem]">
+            Smarter shared rides,
+            <br />
+            <span className="text-primary">lower costs</span> every trip.
           </h1>
-          <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
-            Create a room, let riders on the same route join, then dispatch the best partner after the countdown.
+          <p className="mx-auto mt-7 max-w-3xl text-pretty text-lg font-medium leading-8 text-muted-foreground sm:text-2xl sm:leading-10">
+            Create a room, match passengers at a Hub, and
+            <br className="hidden sm:block" /> dispatch the best ride in 5 minutes.
           </p>
+        </header>
+
+        <div>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Button asChild size="lg">
               <Link href="/rooms/new">
@@ -35,14 +38,6 @@ export default function Home() {
             <Button asChild variant="outline" size="lg">
               <Link href="/rooms/browse">Browse rooms</Link>
             </Button>
-          </div>
-          <div className="mt-8 grid max-w-lg grid-cols-3 gap-3">
-            {stats.map((item) => (
-              <div key={item.label} className="rounded-xl border bg-card p-3">
-                <p className="text-xl font-semibold">{item.value}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{item.label}</p>
-              </div>
-            ))}
           </div>
         </div>
 
