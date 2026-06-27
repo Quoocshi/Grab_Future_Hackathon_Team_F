@@ -34,6 +34,10 @@ springdoc:
     operationsSorter: method
     tagsSorter: alpha
 
+hubride:
+  room:
+    countdown-seconds: ${ROOM_COUNTDOWN_SECONDS:30}
+
 logging:
   level:
     com.hubride: DEBUG

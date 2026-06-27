@@ -4,6 +4,7 @@ import com.hubride.common.enums.MemberRole;
 import com.hubride.common.enums.RoomStatus;
 import com.hubride.common.exception.AppException;
 import com.hubride.common.exception.ErrorCode;
+import com.hubride.module.room.config.RoomProperties;
 import com.hubride.module.room.dto.*;
 import com.hubride.module.room.entity.Room;
 import com.hubride.module.room.entity.RoomMember;
@@ -12,6 +13,7 @@ import com.hubride.module.room.repository.RoomRepository;
 import com.hubride.module.user.entity.User;
 import com.hubride.module.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
@@ -29,6 +31,8 @@ public class RoomService {
     private final RoomMemberRepository roomMemberRepository;
     private final UserRepository userRepository;
     private final H3GeoService h3;
+    private final RoomProperties roomProperties;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Transactional
     public CreateRoomResponse createRoom(CreateRoomRequest req) {
@@ -60,7 +64,7 @@ public class RoomService {
                 .distanceKm(distance)
                 .etaMinutes(etaMin)
                 .status(RoomStatus.OPEN)
-                .countdownRemainingSec(300)
+                .countdownRemainingSec(roomProperties.getCountdownSeconds())
                 .members(new ArrayList<>())
                 .build();
         room = roomRepository.save(room);
@@ -232,5 +236,24 @@ public class RoomService {
 
         room.setStatus(RoomStatus.CANCELLED);
         roomRepository.save(room);
+    }
+
+    @Transactional
+    public void leaveRoom(UUID roomId, UUID userId) {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new AppException(ErrorCode.ROOM_NOT_FOUND));
+
+        RoomMember member = roomMemberRepository.findByRoomIdAndUserId(roomId, userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_IN_ROOM));
+
+        if (member.getRole() == MemberRole.HOST) {
+            throw new AppException(ErrorCode.ONLY_HOST_CAN_CANCEL);
+        }
+
+        roomMemberRepository.deleteByRoomIdAndUserId(roomId, userId);
+
+        messagingTemplate.convertAndSend(
+                "/topic/room/" + roomId,
+                new DispatchService.WsPayload("LEAVE", java.util.Map.of("userId", userId.toString())));
     }
 }
