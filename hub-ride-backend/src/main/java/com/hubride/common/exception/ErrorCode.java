@@ -21,6 +21,9 @@ public enum ErrorCode {
     // User errors
     USER_NOT_FOUND("User not found"),
 
+    // Dispatch errors
+    DISPATCH_FAILED("Dispatch failed — no available partners"),
+
     // Generic
     BAD_REQUEST("Bad request"),
     INTERNAL_ERROR("Internal server error");

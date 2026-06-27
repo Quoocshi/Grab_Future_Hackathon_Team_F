@@ -2,6 +2,7 @@ package com.hubride.module.room.controller;
 
 import com.hubride.common.response.ApiResponse;
 import com.hubride.module.room.dto.*;
+import com.hubride.module.room.service.DispatchService;
 import com.hubride.module.room.service.RoomService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,6 +22,7 @@ import java.util.UUID;
 public class RoomController {
 
     private final RoomService roomService;
+    private final DispatchService dispatchService;
 
     @PostMapping
     @Operation(summary = "Host creates a new room")
@@ -64,5 +66,20 @@ public class RoomController {
             @RequestParam UUID userId) {
         roomService.cancelRoom(roomId, userId);
         return ResponseEntity.ok(ApiResponse.ok(null, "Room cancelled"));
+    }
+
+    @PostMapping("/{roomId}/dispatch")
+    @Operation(summary = "Dispatch room — create bookings for all members")
+    public ResponseEntity<ApiResponse<DispatchResultResponse>> dispatchRoom(@PathVariable UUID roomId) {
+        return ResponseEntity.ok(ApiResponse.ok(dispatchService.dispatch(roomId)));
+    }
+
+    @DeleteMapping("/{roomId}/members/{userId}")
+    @Operation(summary = "Joiner leaves a room")
+    public ResponseEntity<ApiResponse<Void>> leaveRoom(
+            @PathVariable UUID roomId,
+            @PathVariable UUID userId) {
+        roomService.leaveRoom(roomId, userId);
+        return ResponseEntity.ok(ApiResponse.ok(null, "Left room"));
     }
 }
