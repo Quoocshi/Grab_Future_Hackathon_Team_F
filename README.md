@@ -32,7 +32,7 @@ $$
 Where:
 
 - $Fare_{share}$: the amount each passenger pays when sharing a ride
-- $Fare_{solo}$: the fare of the trip if a passenger travels alone
+- $Fare_{solo}$: the total fare of a standard 3-seater car ride if booked individually.
 - $N$: the number of passengers sharing the same ride
 - $\lambda$: platform fee + risk compensation factor (e.g., 0.2 = 20%)
 
@@ -47,7 +47,7 @@ Where:
 
 - $Discount(N)$: the discount percentage applied to each passenger
 - $N$: the number of passengers in the shared ride
-- $\lambda$: the system maintenance factor
+- $\lambda$: platform fee + risk compensation factor (e.g., 0.2 = 20%)
 
 
 ### For the Urban Environment
