@@ -12,9 +12,9 @@
 **Hub-Ride** là một **Lớp dịch vụ trung gian (Aggregator Service Layer)** tích hợp trên các hãng xe công nghệ hiện có (Grab, Be, Xanh SM), hoạt động theo 3 cơ chế đột phá:
 
 - **Hub-based Routing**: Đón/trả tại Hub (điểm tập trung trên trục đường chính), không door-to-door
-- **Host & Join Room**: Gom nhóm người có cùng tuyến đường trong khung 5 phút (Time-boxed)
+- **Host & Join Room**: Gom nhóm người có cùng tuyến đường trong khung thời gian cấu hình được (mặc định 5 phút, demo 30s)
 - **Aggregator**: So sánh giá mock giữa Grab/Be/Xanh SM, dispatch sang hãng rẻ nhất
-- **Pre-pay**: Khóa tiền tạm trong ví, đếm ngược 5 phút chốt phòng
+- **Pre-pay**: Khóa tiền tạm trong ví, đếm ngược theo config để chốt phòng
 - **Minimum 2km**: Từ chối tuyến quá ngắn (khuyến khích đi bộ/xe đạp)
 
 **Trong 10 tiếng MVP demo:**
@@ -181,7 +181,7 @@ sequenceDiagram
     FE->>BE: POST /api/v1/rooms {originAddrId, destAddrId, hostUserId}
     BE->>BE: h3.latLngToCell(origin, res=9) → h3Origin
     BE->>PG: INSERT rooms + room_members
-    BE-->>FE: 201 {roomId, countdownSec:300}
+    BE-->>FE: 201 {roomId, countdownSec:<configured>}
     FE->>WS: SUBSCRIBE /topic/room/{roomId}
 
     par Cùng lúc U2 browse
@@ -213,14 +213,15 @@ sequenceDiagram
 
 ### 4.2 Countdown — FE-side tick (đơn giản, không cần Redis/Scheduler)
 
-- **Backend** chỉ lưu `countdown_remaining_sec` trong DB và trả về khi tạo phòng
+- **Backend** lấy countdown từ config `hubride.room.countdown-seconds`, lưu `countdown_remaining_sec` trong DB và trả về khi tạo phòng
 - **Frontend** dùng `setInterval` 1s, decrement countdown từ giá trị ban đầu
 - Khi countdown = 0, **Frontend gọi** `POST /api/v1/rooms/{roomId}/dispatch` để trigger dispatch
+- **Demo config:** set `ROOM_COUNTDOWN_SECONDS=30` để demo nhanh; production để mặc định `300`
 - **Lý do:** Không cần `@Scheduled` backend, không cần Redis — đơn giản tối đa cho MVP
 
 ```mermaid
 flowchart LR
-    A["FE: countdownSec = 300\nsetInterval 1s"] --> B{"countdown > 0?"}
+    A["FE: countdownSec = config\nprod 300s / demo 30s\nsetInterval 1s"] --> B{"countdown > 0?"}
     B -- Yes --> C["countdown--\nBroadcast to UI"]
     C --> B
     B -- No --> D["FE: POST /rooms/{id}/dispatch"]
@@ -356,7 +357,7 @@ erDiagram
 | ------------------------------------- | ------------------------------------------------------------ |
 | `origin_h3` / `dest_h3`           | Cache H3 cell để query nhanh (không phải JOIN addresses) |
 | `origin_lat/lng` / `dest_lat/lng` | Tính Haversine distance, sort theo khoảng cách            |
-| `countdown_remaining_sec`           | Giá trị ban đầu 300s, FE dùng để tick countdown       |
+| `countdown_remaining_sec`           | Giá trị ban đầu lấy từ config `hubride.room.countdown-seconds`; FE dùng để tick countdown       |
 | `status` enum                       | OPEN → DISPATCHED/CANCELLED/EXPIRED                         |
 
 #### `room_members` — Thành viên trong phòng
@@ -426,7 +427,7 @@ CREATE TABLE IF NOT EXISTS rooms (
     dest_lat                DOUBLE PRECISION NOT NULL,
     dest_lng                DOUBLE PRECISION NOT NULL,
     status                  VARCHAR(20)  NOT NULL DEFAULT 'OPEN',  -- OPEN | DISPATCHED | CANCELLED | EXPIRED
-    countdown_remaining_sec INT         NOT NULL DEFAULT 300,
+    countdown_remaining_sec INT         NOT NULL DEFAULT 300, -- DB fallback; service ghi theo config
     distance_km             DOUBLE PRECISION,
     eta_minutes             INT,
     created_at              TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
@@ -533,7 +534,7 @@ GET  /addresses?q=ktx&limit=10
 # Room
 POST /rooms                          # Host tạo phòng
      body: {hostUserId, originAddrId, destAddrId}
-     → {roomId, countdownSec:300, origin, dest, distanceKm}
+     → {roomId, countdownSec:<configured>, origin, dest, distanceKm}
 
 GET  /rooms?originLat=&originLng=&destLat=&destLng=&excludeUserId=
      → List<RoomListItem> {roomId, hostName, originLabel, destLabel,
@@ -579,14 +580,14 @@ SUBSCRIBE /topic/room/{roomId}
 | ------------------------- | ------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | **Landing**         | `/`                     | Hero lớn + Search box (Origin/Dest) + CTA "Tạo phòng"              | Card glassmorphism, gradient teal→navy, trust badges                            |
 | **Browse Rooms**    | `/rooms/browse`         | List phòng đang mở gần điểm đón user chọn, filter theo route | Grid card, badge countdown màu cam, price tag                                   |
-| **Create Room**     | `/rooms/new`            | Form origin/dest + Date/time + countdown mặc định 5p               | Stepper 2 bước, tóm tắt hub, preview countdown                               |
+| **Create Room**     | `/rooms/new`            | Form origin/dest + Date/time + countdown theo config (prod 5p/demo 30s)               | Stepper 2 bước, tóm tắt hub, preview countdown                               |
 | **Room Detail**     | `/rooms/[roomId]`       | MemberList realtime + Countdown lớn + giá aggregator                | Countdown tròn (circular progress), MemberList avatar, Partner comparison table |
 | **Booking Confirm** | `/bookings/[bookingId]` | Success + driver/vehicle info + ETA                                   | Confetti animation, card gradient xanh, nút "Về trang chủ"                    |
 | **My Bookings**     | `/bookings`             | Lịch sử + trạng thái                                              | Timeline UI, status pill                                                         |
 
 **Component quan trọng:**
 
-- `CountdownTimer`: circular progress (5:00 → 0:00), đổi màu khi < 60s
+- `CountdownTimer`: circular progress (theo `countdownSec` từ BE → 0:00), đổi màu khi < 60s
 - `PartnerCard`: card so sánh 3 hãng (Grab/Be/Xanh SM), highlight hãng rẻ nhất
 - `MemberList`: avatar + tên + role badge (Host), realtime update qua WS
 - `HubBadge`: icon vị trí + label Hub/Điểm đón, distance từ user
@@ -683,7 +684,7 @@ SUBSCRIBE /topic/room/{roomId}
 - [ ] README hướng dẫn chạy nhanh + demo script
 - [ ] 5 users demo (Lan/Mai/Khoa/Hưng/Linh) với ví tiền 500k
 - [ ] 20 địa chỉ seed (KTX Khu A/B, hub phổ biến)
-- [ ] Full flow demo: Host tạo → Mai join → countdown 5p → dispatch Xanh SM → booking confirm
+- [ ] Full flow demo: Host tạo → Mai join → countdown 30s (`ROOM_COUNTDOWN_SECONDS=30`) → dispatch Xanh SM → booking confirm
 - [ ] 3 mock partner với surge pricing khác nhau (Grab/Be/Xanh SM)
 - [ ] H3 geospatial matching hoạt động (gridDisk + k-ring)
 - [ ] WebSocket realtime (member join, dispatch broadcast)
@@ -735,7 +736,7 @@ SUBSCRIBE /topic/room/{roomId}
 | Bất cập                                                            | Giải pháp trong hệ thống                                                                                                                       |
 | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **1. Phòng chỉ có 2-3 người, ai chịu phí còn trống?** | Hub-Ride chọn cuốc xe rẻ nhất (Xanh SM không surge). Chia đôi cho 2 người vẫn rẻ hơn 2 GrabBike. Không ép đủ 4 người mới chạy. |
-| **2. Chênh lệch thời gian chờ**                            | Time-boxed 5 phút. Hết 5p → chốt danh sách + dispatch. Ai chưa sẵn sàng → tự tạo phòng khác.                                          |
+| **2. Chênh lệch thời gian chờ**                            | Time-boxed theo config. Production 5 phút; demo 30s. Hết giờ → chốt danh sách + dispatch. Ai chưa sẵn sàng → tự tạo phòng khác.                                          |
 | **3. Rủi ro "Bùng" (hủy ngang)**                            | Pre-pay: bấm Join/Host → tiền bị khóa ngay. Hủy sau khi phòng chốt → tiền giữ lại làm quỹ dự phòng.                                |
 | **4. Quãng đường quá ngắn không lãi**                  | Minimum 2km validation. Dưới 2km → từ chối tạo phòng, hướng đến đi bộ/xe đạp.                                                       |
 
@@ -790,8 +791,8 @@ sequenceDiagram
     BE->>H3: h3.latLngToCell(lat, lng, res=9)
     H3-->>BE: h3Index = "89459aaa1a3ffff"
     BE->>PG: INSERT INTO addresses (label, lat, lng, h3_index) ON CONFLICT DO NOTHING
-    BE->>PG: INSERT INTO rooms (..., origin_h3, dest_h3, status='OPEN', countdown_remaining_sec=300)
-    BE-->>FE: 201 {roomId, origin, dest, countdownSec:300}
+    BE->>PG: INSERT INTO rooms (..., origin_h3, dest_h3, status='OPEN', countdown_remaining_sec=<configured>)
+    BE-->>FE: 201 {roomId, origin, dest, countdownSec:<configured>}
 
     Note over User,BE: Sau đó User khác muốn tìm phòng gần
 
@@ -973,7 +974,7 @@ export default function NewRoomPage() {
       <AddressAutocomplete value={origin} onChange={setOrigin} placeholder="Điểm đón (Origin)" />
       <AddressAutocomplete value={dest}   onChange={setDest}   placeholder="Điểm đến (Destination)" />
       <Button onClick={handleCreate} disabled={!origin || !dest || submitting} size="lg" className="w-full">
-        {submitting ? 'Đang tạo...' : 'Tạo phòng (5 phút countdown)'}
+        {submitting ? 'Đang tạo...' : 'Tạo phòng'}
       </Button>
     </div>
   );
@@ -1175,11 +1176,13 @@ DATABASE_URL=postgresql://user:password@ep-xxx.neon.tech/hubride?sslmode=require
 DATABASE_USER=your_neon_user
 DATABASE_PASSWORD=your_neon_password
 GOONG_API_KEY=your_goong_api_key_here
+ROOM_COUNTDOWN_SECONDS=30   # Demo nhanh 30s; bỏ biến này để dùng mặc định 300s
 
 # frontend/.env.local
 NEXT_PUBLIC_GOONG_API_KEY=your_goong_api_key_here
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8080/api/v1
 NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws
+NEXT_PUBLIC_ROOM_COUNTDOWN_SECONDS=30  # Optional fallback cho preview; ưu tiên countdownSec từ BE
 ```
 
 ```yaml
@@ -1196,6 +1199,26 @@ spring:
     show-sql: false
 goong:
   api-key: ${GOONG_API_KEY:}
+hubride:
+  room:
+    countdown-seconds: ${ROOM_COUNTDOWN_SECONDS:300}
+```
+
+```java
+// module/room/config/RoomProperties.java
+@ConfigurationProperties(prefix = "hubride.room")
+public record RoomProperties(int countdownSeconds) {}
+```
+
+```java
+// HubRideApplication.java
+@SpringBootApplication
+@ConfigurationPropertiesScan
+public class HubRideApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(HubRideApplication.class, args);
+    }
+}
 ```
 
 ### 15.13 Tóm tắt End-to-End
@@ -1217,7 +1240,7 @@ goong:
    ↓
 [Bước 8] BE tính H3 index (res=9), INSERT rooms + addresses
    ↓
-[Bước 9] BE trả về roomId + countdownSec:300 → FE redirect sang /rooms/{roomId}
+[Bước 9] BE trả về roomId + countdownSec theo config (demo 30s) → FE redirect sang /rooms/{roomId}
    ↓
 [Bước 10] FE bắt đầu countdown tick (setInterval 1s)
    ↓
@@ -1307,6 +1330,7 @@ public class H3GeoService {
 public class RoomService {
     private final H3GeoService h3;
     private final RoomRepository roomRepository;
+    private final RoomProperties roomProperties;
 
     public Room createRoom(CreateRoomRequest req) {
         // 1. Validate Minimum 2km
@@ -1335,7 +1359,7 @@ public class RoomService {
             .distanceKm(distance)
             .etaMinutes(etaMin)
             .status("OPEN")
-            .countdownRemainingSec(300)
+            .countdownRemainingSec(roomProperties.countdownSeconds())
             .build();
 
         return roomRepository.save(room);
