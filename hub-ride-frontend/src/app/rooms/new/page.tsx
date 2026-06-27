@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { AlertCircle, ArrowRight, CheckCircle2, MapPinned, Route } from "lucide-react";
+import { AlertCircle, ArrowRight, CheckCircle2, MapPinned, Route, Send } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/layout/app-shell";
@@ -57,17 +57,16 @@ export default function NewRoomPage() {
     <AppShell>
       <section className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_0.8fr] lg:px-8">
         <div className="rounded-2xl border bg-card p-5 sm:p-6">
-          <Badge variant="secondary">Host room</Badge>
+          {/* <Badge variant="secondary">Host room</Badge> */}
           <h1 className="mt-4 text-3xl font-semibold tracking-tight">Create a new room</h1>
-          <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
+          {/* <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
             Choose pickup and destination hubs. The backend calculates H3 cells, creates the room, and returns the countdown.
-          </p>
+          </p> */}
 
           <div className="mt-6 grid gap-5">
-            <div className="grid gap-3 rounded-xl bg-muted/45 p-4 sm:grid-cols-[1fr_auto] sm:items-center">
+            <div className="flex gap-3 rounded-xl bg-muted/45 p-4 items-center justify-between">
               <div>
                 <p className="text-sm font-medium">Room host</p>
-                <p className="text-sm text-muted-foreground">{currentUser.fullName}</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <UserSwitcher />
@@ -80,6 +79,7 @@ export default function NewRoomPage() {
               label="Pickup hub"
               value={origin}
               onChange={setOrigin}
+              icon={MapPinned}
               placeholder="Search KTX Khu A, Main Gate, District 1..."
             />
             <AddressAutocomplete
@@ -87,6 +87,7 @@ export default function NewRoomPage() {
               label="Destination"
               value={dest}
               onChange={setDest}
+              icon={Send}
               placeholder="Search District 1, Downtown, Saigon Station..."
             />
 
