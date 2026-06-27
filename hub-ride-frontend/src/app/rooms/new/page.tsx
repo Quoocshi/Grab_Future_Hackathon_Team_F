@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { AlertCircle, ArrowRight, CheckCircle2, MapPinned, Route, Send } from "lucide-react";
 import { toast } from "sonner";
@@ -20,6 +20,7 @@ import type { SelectedPlace } from "@/types/address";
 
 export default function NewRoomPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const currentUser = useUserStore((state) => state.currentUser);
   const [origin, setOrigin] = useState<SelectedPlace | null>(null);
   const [dest, setDest] = useState<SelectedPlace | null>(null);
@@ -44,8 +45,9 @@ export default function NewRoomPage() {
         destLabel: dest.label,
       });
     },
-    onSuccess: (room) => {
-      toast.success("Room created.");
+    onSuccess: async (room) => {
+      await queryClient.invalidateQueries({ queryKey: ["users"] });
+      toast.success("Room created. 100,000 ₫ is held from your wallet.");
       router.push(`/rooms/${room.roomId}`);
     },
     onError: (error) => {
@@ -118,6 +120,9 @@ export default function NewRoomPage() {
               {mutation.isPending ? "Creating room..." : "Create room"}
               <ArrowRight className="size-4" aria-hidden="true" />
             </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              A 100,000 ₫ pre-pay hold is applied. Unused funds are refunded automatically.
+            </p>
           </div>
         </div>
 
