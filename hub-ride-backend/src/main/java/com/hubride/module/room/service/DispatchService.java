@@ -19,6 +19,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -89,9 +91,7 @@ public class DispatchService {
                         .toList())
                 .build();
 
-        messagingTemplate.convertAndSend(
-                "/topic/room/" + roomId,
-                new WsPayload("DISPATCHED", response));
+        publishAfterCommit(roomId, new WsPayload("DISPATCHED", response));
 
         return response;
     }
@@ -105,6 +105,20 @@ public class DispatchService {
                 .surgeMultiplier(q.surgeMultiplier())
                 .vehicleType(q.vehicleType())
                 .build();
+    }
+
+    private void publishAfterCommit(UUID roomId, WsPayload payload) {
+        Runnable publish = () -> messagingTemplate.convertAndSend("/topic/room/" + roomId, payload);
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            publish.run();
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                publish.run();
+            }
+        });
     }
 
     public record WsPayload(String event, Object payload) {}
