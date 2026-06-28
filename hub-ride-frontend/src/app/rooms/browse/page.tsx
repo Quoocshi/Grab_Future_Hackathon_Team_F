@@ -101,8 +101,22 @@ export default function BrowseRoomsPage() {
             Choose a matching route so the backend can find nearby rooms with H3 k-ring matching.
           </p>
           <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <AddressAutocomplete id="tour-origin-input" label="Your pickup hub" value={origin} onChange={setOrigin} placeholder="Choose a pickup hub" />
-            <AddressAutocomplete id="tour-destination-input" label="Your destination" value={dest} onChange={setDest} placeholder="Choose a destination" />
+            <AddressAutocomplete
+              id="tour-origin-input"
+              label="Your pickup hub"
+              value={origin}
+              onChange={setOrigin}
+              icon={MapPinned}
+              placeholder="Choose a pickup hub"
+            />
+            <AddressAutocomplete
+              id="tour-destination-input"
+              label="Your destination"
+              value={dest}
+              onChange={setDest}
+              icon={Route}
+              placeholder="Choose a destination"
+            />
           </div>
         </div>
 
