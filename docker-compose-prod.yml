@@ -3,9 +3,14 @@ services:
     build:
       context: ./hub-ride-backend
     image: lcaohoanq/hub-ride-backend:latest
+    mem_limit: 4096m
+    cpus: 2.5
     env_file:
-      - ./hub-ride-backend/.env
+      - .env
     environment:
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_USER: ${DATABASE_USER:-neondb_owner}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
       ROOM_COUNTDOWN_SECONDS: ${ROOM_COUNTDOWN_SECONDS:-30}
     ports:
       - "8081:8081"
@@ -20,6 +25,8 @@ services:
         NEXT_PUBLIC_GOONG_API_KEY: ${NEXT_PUBLIC_GOONG_API_KEY:-}
         NEXT_PUBLIC_ROOM_COUNTDOWN_SECONDS: ${NEXT_PUBLIC_ROOM_COUNTDOWN_SECONDS:-30}
     image: lcaohoanq/hub-ride-frontend:latest
+    mem_limit: 2048m
+    cpus: 1.0
     depends_on:
       - backend
     ports:
