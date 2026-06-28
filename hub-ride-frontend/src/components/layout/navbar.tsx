@@ -44,6 +44,9 @@ export function Navbar() {
           <div className="hidden sm:block">
             <OnboardingLauncher />
           </div>
+          <div className="sm:hidden">
+            <OnboardingLauncher compact />
+          </div>
           <Button asChild className="hidden sm:inline-flex" size="lg">
             <Link href="/rooms/new">
               <Plus className="size-4" strokeWidth={1.8} aria-hidden="true" />
