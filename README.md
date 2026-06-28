@@ -321,7 +321,7 @@ Grab_Future_Hackathon_Team_F/
 |---|---|---|
 | **Java** | 17+ | [Adoptium](https://adoptium.net/) |
 | **Maven** | 3.9+ | `brew install maven` / `sdk install maven` |
-| **Node.js** | 20+ | [nodejs.org](https://nodejs.org) |
+| **Node.js (runtime for Next.js)** | 20+ | [nodejs.org](https://nodejs.org) |
 | **pnpm** | 9+ | `npm install -g pnpm` |
 | **PostgreSQL client** | 15+ | `psql` (for DB setup) |
 | **Docker + Docker Compose** | 24+ | [docker.com](https://www.docker.com/products/docker-desktop/) |
@@ -334,7 +334,7 @@ Grab_Future_Hackathon_Team_F/
 
 ```bash
 # 1. Clone repo
-git clone <repo-url>
+git clone https://github.com/Quoocshi/Grab_Future_Hackathon_Team_F.git
 cd Grab_Future_Hackathon_Team_F
 
 # 2. Tạo .env từ template
