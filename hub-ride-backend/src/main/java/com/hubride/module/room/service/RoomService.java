@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 @Service
@@ -224,8 +225,9 @@ public class RoomService {
                 .totalHeld(totalHeld)
                 .build();
 
-        publishAfterCommit(
+        publishRoomSnapshotAfterCommit(
                 roomId,
+                "JOIN",
                 new DispatchService.WsPayload("JOIN", java.util.Map.of("memberCount", allMembers.size())));
 
         return response;
@@ -247,8 +249,9 @@ public class RoomService {
         room.setStatus(RoomStatus.CANCELLED);
         roomRepository.save(room);
 
-        publishAfterCommit(
+        publishRoomSnapshotAfterCommit(
                 roomId,
+                "CANCELLED",
                 new DispatchService.WsPayload("CANCELLED", java.util.Map.of("roomId", roomId.toString())));
     }
 
@@ -266,8 +269,9 @@ public class RoomService {
 
         roomMemberRepository.deleteByRoomIdAndUserId(roomId, userId);
 
-        publishAfterCommit(
+        publishRoomSnapshotAfterCommit(
                 roomId,
+                "LEAVE",
                 new DispatchService.WsPayload("LEAVE", java.util.Map.of("userId", userId.toString())));
     }
 
@@ -283,16 +287,23 @@ public class RoomService {
         return Math.max(0, countdownSec - (int) elapsedSec);
     }
 
-    private void publishAfterCommit(UUID roomId, DispatchService.WsPayload payload) {
-        Runnable publish = () -> messagingTemplate.convertAndSend("/topic/room/" + roomId, payload);
+    private void publishRoomSnapshotAfterCommit(UUID roomId, String event, DispatchService.WsPayload fallbackPayload) {
+        publishAfterCommit(
+                () -> new DispatchService.WsPayload(event, getRoomDetail(roomId)),
+                () -> fallbackPayload,
+                roomId);
+    }
+
+    private void publishAfterCommit(Supplier<DispatchService.WsPayload> payload, Supplier<DispatchService.WsPayload> fallbackPayload, UUID roomId) {
+        String topic = "/topic/room/" + roomId;
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            publish.run();
+            messagingTemplate.convertAndSend(topic, fallbackPayload.get());
             return;
         }
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                publish.run();
+                messagingTemplate.convertAndSend(topic, payload.get());
             }
         });
     }
