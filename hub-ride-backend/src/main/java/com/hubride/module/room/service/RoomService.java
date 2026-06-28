@@ -16,11 +16,16 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 @Service
@@ -128,7 +133,7 @@ public class RoomService {
                             .destLabel(r.getDestLabel() != null ? r.getDestLabel() : r.getDestLat() + "," + r.getDestLng())
                             .distanceKm(Math.round(userDistance * 100.0) / 100.0)
                             .memberCount(memberCount)
-                            .countdownSec(r.getCountdownRemainingSec())
+                            .countdownSec(countdownRemainingSec(r))
                             .build();
                 })
                 .sorted((a, b) -> Double.compare(a.getDistanceKm(), b.getDistanceKm()))
@@ -180,7 +185,7 @@ public class RoomService {
                         .lng(room.getDestLng())
                         .h3Index(room.getDestH3())
                         .build())
-                .countdownSec(room.getCountdownRemainingSec())
+                .countdownSec(countdownRemainingSec(room))
                 .distanceKm(room.getDistanceKm())
                 .etaMinutes(room.getEtaMinutes())
                 .build();
@@ -191,7 +196,7 @@ public class RoomService {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new AppException(ErrorCode.ROOM_NOT_FOUND));
 
-        if (room.getStatus() != RoomStatus.OPEN) {
+        if (!isJoinable(room)) {
             throw new AppException(ErrorCode.ROOM_NOT_OPEN);
         }
 
@@ -220,8 +225,9 @@ public class RoomService {
                 .totalHeld(totalHeld)
                 .build();
 
-        messagingTemplate.convertAndSend(
-                "/topic/room/" + roomId,
+        publishRoomSnapshotAfterCommit(
+                roomId,
+                "JOIN",
                 new DispatchService.WsPayload("JOIN", java.util.Map.of("memberCount", allMembers.size())));
 
         return response;
@@ -243,8 +249,9 @@ public class RoomService {
         room.setStatus(RoomStatus.CANCELLED);
         roomRepository.save(room);
 
-        messagingTemplate.convertAndSend(
-                "/topic/room/" + roomId,
+        publishRoomSnapshotAfterCommit(
+                roomId,
+                "CANCELLED",
                 new DispatchService.WsPayload("CANCELLED", java.util.Map.of("roomId", roomId.toString())));
     }
 
@@ -262,8 +269,42 @@ public class RoomService {
 
         roomMemberRepository.deleteByRoomIdAndUserId(roomId, userId);
 
-        messagingTemplate.convertAndSend(
-                "/topic/room/" + roomId,
+        publishRoomSnapshotAfterCommit(
+                roomId,
+                "LEAVE",
                 new DispatchService.WsPayload("LEAVE", java.util.Map.of("userId", userId.toString())));
+    }
+
+    private boolean isJoinable(Room room) {
+        return room.getStatus() == RoomStatus.OPEN && countdownRemainingSec(room) > 0;
+    }
+
+    private int countdownRemainingSec(Room room) {
+        int countdownSec = room.getCountdownRemainingSec() != null
+                ? room.getCountdownRemainingSec()
+                : roomProperties.getCountdownSeconds();
+        long elapsedSec = ChronoUnit.SECONDS.between(room.getCreatedAt(), OffsetDateTime.now());
+        return Math.max(0, countdownSec - (int) elapsedSec);
+    }
+
+    private void publishRoomSnapshotAfterCommit(UUID roomId, String event, DispatchService.WsPayload fallbackPayload) {
+        publishAfterCommit(
+                () -> new DispatchService.WsPayload(event, getRoomDetail(roomId)),
+                () -> fallbackPayload,
+                roomId);
+    }
+
+    private void publishAfterCommit(Supplier<DispatchService.WsPayload> payload, Supplier<DispatchService.WsPayload> fallbackPayload, UUID roomId) {
+        String topic = "/topic/room/" + roomId;
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            messagingTemplate.convertAndSend(topic, fallbackPayload.get());
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                messagingTemplate.convertAndSend(topic, payload.get());
+            }
+        });
     }
 }

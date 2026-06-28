@@ -19,7 +19,7 @@ public interface RoomRepository extends JpaRepository<Room, UUID> {
         WHERE status = 'OPEN'
           AND origin_h3 = ANY(:h3Cells)
           AND host_user_id != :excludeUserId
-          AND created_at > NOW() - INTERVAL '10 minutes'
+          AND created_at + (countdown_remaining_sec * INTERVAL '1 second') > NOW()
         ORDER BY created_at DESC
         LIMIT 50
         """, nativeQuery = true)

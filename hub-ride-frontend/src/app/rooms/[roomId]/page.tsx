@@ -19,10 +19,16 @@ import { getBookings } from "@/lib/api/booking";
 import { useUserStore } from "@/lib/store/userStore";
 import { formatKm } from "@/lib/utils/format";
 import { useRoomSubscription } from "@/lib/ws/useRoomSubscription";
-import type { DispatchResult, RoomEvent } from "@/types/room";
+import type { DispatchResult, RoomDetail, RoomEvent } from "@/types/room";
 
 function getParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
+}
+
+function isRoomDetailPayload(payload: unknown, roomId: string | undefined): payload is RoomDetail {
+  if (!payload || typeof payload !== "object") return false;
+  const maybeRoom = payload as Partial<RoomDetail>;
+  return maybeRoom.roomId === roomId && Array.isArray(maybeRoom.members);
 }
 
 export default function RoomDetailPage() {
@@ -129,6 +135,10 @@ export default function RoomDetailPage() {
             : current,
         );
         await redirectToCurrentBooking(result.roomId);
+        return;
+      }
+      if (isRoomDetailPayload(event.payload, roomId)) {
+        queryClient.setQueryData(["rooms", "detail", roomId], event.payload);
         return;
       }
       await roomQuery.refetch();

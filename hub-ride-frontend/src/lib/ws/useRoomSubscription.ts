@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import type { RoomEvent } from "@/types/room";
@@ -8,6 +8,12 @@ import type { RoomEvent } from "@/types/room";
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:8081/ws";
 
 export function useRoomSubscription(roomId: string | undefined, onEvent: (event: RoomEvent) => void) {
+  const onEventRef = useRef(onEvent);
+
+  useEffect(() => {
+    onEventRef.current = onEvent;
+  }, [onEvent]);
+
   useEffect(() => {
     if (!roomId) return;
 
@@ -17,9 +23,9 @@ export function useRoomSubscription(roomId: string | undefined, onEvent: (event:
       onConnect: () => {
         client.subscribe(`/topic/room/${roomId}`, (message) => {
           try {
-            onEvent(JSON.parse(message.body) as RoomEvent);
+            onEventRef.current(JSON.parse(message.body) as RoomEvent);
           } catch {
-            onEvent({ event: "UNKNOWN", payload: message.body });
+            onEventRef.current({ event: "UNKNOWN", payload: message.body });
           }
         });
       },
@@ -29,5 +35,5 @@ export function useRoomSubscription(roomId: string | undefined, onEvent: (event:
     return () => {
       void client.deactivate();
     };
-  }, [onEvent, roomId]);
+  }, [roomId]);
 }
