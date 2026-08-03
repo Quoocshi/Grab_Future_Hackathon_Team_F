@@ -16,14 +16,19 @@ export function MemberList({ members }: Props) {
       </div>
       <div className="mt-4 grid gap-3">
         {members.map((member) => (
-          <div key={member.userId} className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
+          <div
+            key={member.userId}
+            className="flex items-center justify-between rounded-lg bg-muted/50 p-3"
+          >
             <div className="flex min-w-0 items-center gap-3">
               <Avatar className="size-9">
                 <AvatarFallback>{member.fullName.slice(0, 1).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="min-w-0">
                 <p className="truncate font-medium">{member.fullName}</p>
-                <p className="text-xs text-muted-foreground">{member.role === "HOST" ? "Host" : "Joiner"}</p>
+                <p className="text-xs text-muted-foreground">
+                  {member.role === "HOST" ? "Host" : "Joiner"}
+                </p>
               </div>
             </div>
             {member.role === "HOST" ? (

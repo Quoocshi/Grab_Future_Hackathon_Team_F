@@ -10,7 +10,8 @@ export const mainTour: Tour[] = [
       {
         icon: null,
         title: "Welcome to Hub-Ride",
-        content: "This quick guide walks through the demo flow: create a room, find riders, dispatch, and view bookings.",
+        content:
+          "This quick guide walks through the demo flow: create a room, find riders, dispatch, and view bookings.",
         side: "bottom",
         showControls: true,
         showSkip: true,
@@ -20,7 +21,8 @@ export const mainTour: Tour[] = [
       {
         icon: null,
         title: "Pick a demo user",
-        content: "Switch between seeded demo users. The selected user controls room creation, joining, and booking history.",
+        content:
+          "Switch between seeded demo users. The selected user controls room creation, joining, and booking history.",
         side: "bottom",
         showControls: true,
         showSkip: true,
@@ -30,7 +32,8 @@ export const mainTour: Tour[] = [
       {
         icon: null,
         title: "Check the demo wallet",
-        content: "Wallet balance is shown for the current demo user and supports the pre-pay story in the pitch.",
+        content:
+          "Wallet balance is shown for the current demo user and supports the pre-pay story in the pitch.",
         side: "bottom",
         showControls: true,
         showSkip: true,
@@ -40,7 +43,8 @@ export const mainTour: Tour[] = [
       {
         icon: null,
         title: "Create a ride room",
-        content: "Start from the create room flow, choose origin and destination hubs, then let the backend calculate distance and H3 cells.",
+        content:
+          "Start from the create room flow, choose origin and destination hubs, then let the backend calculate distance and H3 cells.",
         side: "bottom",
         showControls: true,
         showSkip: true,
@@ -51,7 +55,8 @@ export const mainTour: Tour[] = [
       {
         icon: null,
         title: "Choose the origin",
-        content: "Search from the seeded address list. The selected place sends latitude and longitude to the backend.",
+        content:
+          "Search from the seeded address list. The selected place sends latitude and longitude to the backend.",
         selector: "#tour-origin-input",
         side: "bottom",
         showControls: true,
@@ -62,7 +67,8 @@ export const mainTour: Tour[] = [
       {
         icon: null,
         title: "Choose the destination",
-        content: "The route preview blocks short trips under two kilometers and helps explain the hub-based model.",
+        content:
+          "The route preview blocks short trips under two kilometers and helps explain the hub-based model.",
         selector: "#tour-destination-input",
         side: "bottom",
         showControls: true,
@@ -75,7 +81,8 @@ export const mainTour: Tour[] = [
       {
         icon: null,
         title: "Browse matching rooms",
-        content: "Joiners search the same route and see rooms found through the backend H3 matching service.",
+        content:
+          "Joiners search the same route and see rooms found through the backend H3 matching service.",
         selector: "#tour-browse-rooms",
         side: "bottom",
         showControls: true,
@@ -87,7 +94,8 @@ export const mainTour: Tour[] = [
       {
         icon: null,
         title: "Watch the countdown",
-        content: "On a room detail page, this timer drives the dispatch moment. It appears after a host creates a room or a joiner enters one.",
+        content:
+          "On a room detail page, this timer drives the dispatch moment. It appears after a host creates a room or a joiner enters one.",
         side: "bottom",
         showControls: true,
         showSkip: true,
@@ -97,7 +105,8 @@ export const mainTour: Tour[] = [
       {
         icon: null,
         title: "Track room members",
-        content: "The member list updates as riders join or leave, using the room topic subscription and cache reconciliation.",
+        content:
+          "The member list updates as riders join or leave, using the room topic subscription and cache reconciliation.",
         side: "bottom",
         showControls: true,
         showSkip: true,
@@ -107,7 +116,8 @@ export const mainTour: Tour[] = [
       {
         icon: null,
         title: "Compare dispatch quotes",
-        content: "After dispatch, the room shows partner quotes and highlights the best fare before each rider lands on booking confirmation.",
+        content:
+          "After dispatch, the room shows partner quotes and highlights the best fare before each rider lands on booking confirmation.",
         side: "bottom",
         showControls: true,
         showSkip: true,

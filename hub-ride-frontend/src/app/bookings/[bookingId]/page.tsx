@@ -20,7 +20,12 @@ export default function BookingDetailPage() {
   const params = useParams();
   const bookingId = getParam(params.bookingId);
 
-  const { data: booking, isLoading, isError, refetch } = useQuery({
+  const {
+    data: booking,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ["bookings", "detail", bookingId],
     enabled: Boolean(bookingId),
     queryFn: () => getBooking(bookingId!),

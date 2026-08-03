@@ -17,7 +17,15 @@ import { formatCountdown, formatKm } from "@/lib/utils/format";
 import type { SelectedPlace } from "@/types/address";
 import type { RoomListItem } from "@/types/room";
 
-function RoomCard({ room, onJoin, joining }: { room: RoomListItem; onJoin: () => void; joining: boolean }) {
+function RoomCard({
+  room,
+  onJoin,
+  joining,
+}: {
+  room: RoomListItem;
+  onJoin: () => void;
+  joining: boolean;
+}) {
   return (
     <div className="rounded-2xl border bg-card p-5">
       <div className="flex items-start justify-between gap-3">
@@ -68,7 +76,12 @@ export default function BrowseRoomsPage() {
     [currentUser.id, dest?.lat, dest?.lng, origin?.lat, origin?.lng],
   );
 
-  const { data: rooms = [], isFetching, isError, refetch } = useQuery({
+  const {
+    data: rooms = [],
+    isFetching,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey,
     enabled: canSearch,
     queryFn: () =>
@@ -88,7 +101,8 @@ export default function BrowseRoomsPage() {
       queryClient.invalidateQueries({ queryKey: ["rooms"] });
       window.location.href = `/rooms/${roomId}`;
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Could not join the room."),
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : "Could not join the room."),
   });
 
   return (
@@ -141,7 +155,9 @@ export default function BrowseRoomsPage() {
             <div className="rounded-2xl border bg-card p-8 text-center">
               <Clock3 className="mx-auto size-8 text-muted-foreground" aria-hidden="true" />
               <h2 className="mt-3 font-semibold">No matching rooms yet</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Create a new room so others can join the same route.</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Create a new room so others can join the same route.
+              </p>
               <Button asChild className="mt-5">
                 <Link href="/rooms/new">Create room</Link>
               </Button>

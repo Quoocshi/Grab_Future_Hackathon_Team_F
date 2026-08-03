@@ -38,7 +38,9 @@ export function CountdownTimer({ initialSeconds, active = true, onComplete }: Pr
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-sm text-muted-foreground">Countdown</p>
-          <p className={cn("mt-1 text-4xl font-semibold tabular-nums", urgent && "text-destructive")}>
+          <p
+            className={cn("mt-1 text-4xl font-semibold tabular-nums", urgent && "text-destructive")}
+          >
             {formatCountdown(remaining)}
           </p>
         </div>

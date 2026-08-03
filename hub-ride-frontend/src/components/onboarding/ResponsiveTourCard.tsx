@@ -36,7 +36,13 @@ export function ResponsiveTourCard({
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
         {step.showControls ? (
-          <Button type="button" variant="outline" size="sm" onClick={prevStep} disabled={currentStep === 0}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={prevStep}
+            disabled={currentStep === 0}
+          >
             Previous
           </Button>
         ) : (

@@ -14,7 +14,10 @@ const stats = [
 export default function Home() {
   return (
     <AppShell>
-      <section id="tour-hero" className="mx-auto grid min-h-[calc(100dvh-9rem)] w-full max-w-7xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-[1fr_0.9fr] md:items-center lg:px-8">
+      <section
+        id="tour-hero"
+        className="mx-auto grid min-h-[calc(100dvh-9rem)] w-full max-w-7xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-[1fr_0.9fr] md:items-center lg:px-8"
+      >
         <header className="text-center md:col-span-2">
           <h1 className="mx-auto max-w-6xl text-balance text-5xl font-bold leading-[1.05] tracking-[-0.045em] sm:text-6xl lg:text-[5.35rem]">
             Smarter shared rides,
@@ -57,7 +60,10 @@ export default function Home() {
                 { icon: UsersRound, label: "Room members", value: "Lan, Mai" },
                 { icon: Clock3, label: "Dispatch", value: "Best quote after countdown" },
               ].map((item) => (
-                <div key={item.label} className="flex items-center gap-3 rounded-lg bg-background p-3">
+                <div
+                  key={item.label}
+                  className="flex items-center gap-3 rounded-lg bg-background p-3"
+                >
                   <item.icon className="size-4 text-primary" aria-hidden="true" />
                   <div>
                     <p className="text-sm font-medium">{item.label}</p>

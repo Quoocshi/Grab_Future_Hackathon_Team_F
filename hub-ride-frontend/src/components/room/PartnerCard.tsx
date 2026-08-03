@@ -54,11 +54,11 @@ export function PartnerCard({ quote, best }: Props) {
         </div>
         <div className="grid grid-cols-3 gap-3 text-sm">
           <div>
-              <p className="text-muted-foreground">Total</p>
+            <p className="text-muted-foreground">Total</p>
             <p className="mt-1 font-semibold">{formatVnd(quote.totalPrice)}</p>
           </div>
           <div>
-              <p className="text-muted-foreground">Per rider</p>
+            <p className="text-muted-foreground">Per rider</p>
             <p className="mt-1 font-semibold">{formatVnd(perPerson)}</p>
           </div>
           <div>

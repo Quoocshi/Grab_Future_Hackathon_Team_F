@@ -17,13 +17,18 @@ export function Footer() {
             Hub-based shared rides for demo users
           </div>
           <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
-            Group riders at hubs, lock the room with a countdown, and compare Grab, Be, and Xanh SM for the best fare.
+            Group riders at hubs, lock the room with a countdown, and compare Grab, Be, and Xanh SM
+            for the best fare.
           </p>
         </div>
 
         <div className="flex flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:items-center">
           {footerLinks.map((link) => (
-            <Link key={link.href} href={link.href} className="transition-colors hover:text-foreground">
+            <Link
+              key={link.href}
+              href={link.href}
+              className="transition-colors hover:text-foreground"
+            >
               {link.label}
             </Link>
           ))}
