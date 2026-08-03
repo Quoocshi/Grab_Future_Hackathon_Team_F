@@ -99,7 +99,8 @@ export default function RoomDetailPage() {
       toast.success("Joined the room.");
       await roomQuery.refetch();
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Could not join the room."),
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : "Could not join the room."),
   });
 
   const leaveMutation = useMutation({
@@ -108,7 +109,8 @@ export default function RoomDetailPage() {
       toast.success("Left the room.");
       await roomQuery.refetch();
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Could not leave the room."),
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : "Could not leave the room."),
   });
 
   const cancelMutation = useMutation({
@@ -117,7 +119,8 @@ export default function RoomDetailPage() {
       toast.success("Room cancelled.");
       router.push("/rooms/browse");
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Could not cancel the room."),
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : "Could not cancel the room."),
   });
 
   const onRoomEvent = useCallback(
@@ -180,22 +183,34 @@ export default function RoomDetailPage() {
                     </Badge>
                     <h1 className="mt-4 text-3xl font-semibold tracking-tight">Shared ride room</h1>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      Hosted by {memberSafeRoom.host.fullName}, with {memberSafeRoom.members.length} members in the room.
+                      Hosted by {memberSafeRoom.host.fullName}, with {memberSafeRoom.members.length}{" "}
+                      members in the room.
                     </p>
                   </div>
                   <div className="flex gap-2">
                     {!isMember && memberSafeRoom.status === "OPEN" ? (
-                      <Button disabled={joinMutation.isPending} onClick={() => joinMutation.mutate()}>
+                      <Button
+                        disabled={joinMutation.isPending}
+                        onClick={() => joinMutation.mutate()}
+                      >
                         Join room
                       </Button>
                     ) : null}
                     {isMember && !isHost && memberSafeRoom.status === "OPEN" ? (
-                      <Button variant="outline" disabled={leaveMutation.isPending} onClick={() => leaveMutation.mutate()}>
+                      <Button
+                        variant="outline"
+                        disabled={leaveMutation.isPending}
+                        onClick={() => leaveMutation.mutate()}
+                      >
                         Leave room
                       </Button>
                     ) : null}
                     {isHost && memberSafeRoom.status === "OPEN" ? (
-                      <Button variant="destructive" disabled={cancelMutation.isPending} onClick={() => cancelMutation.mutate()}>
+                      <Button
+                        variant="destructive"
+                        disabled={cancelMutation.isPending}
+                        onClick={() => cancelMutation.mutate()}
+                      >
                         Cancel room
                       </Button>
                     ) : null}
@@ -226,7 +241,10 @@ export default function RoomDetailPage() {
                 </div>
               </div>
 
-              <PriceCompare quotes={memberSafeRoom.allQuotes} bestQuote={memberSafeRoom.bestQuote} />
+              <PriceCompare
+                quotes={memberSafeRoom.allQuotes}
+                bestQuote={memberSafeRoom.bestQuote}
+              />
             </div>
 
             <aside className="grid content-start gap-6">

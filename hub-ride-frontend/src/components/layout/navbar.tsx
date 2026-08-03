@@ -53,7 +53,13 @@ export function Navbar() {
               Create
             </Link>
           </Button>
-          <Button asChild variant="outline" size="icon-lg" className="md:hidden" aria-label="Browse rooms">
+          <Button
+            asChild
+            variant="outline"
+            size="icon-lg"
+            className="md:hidden"
+            aria-label="Browse rooms"
+          >
             <Link href="/rooms/browse">
               <Search className="size-5" strokeWidth={1.8} aria-hidden="true" />
             </Link>

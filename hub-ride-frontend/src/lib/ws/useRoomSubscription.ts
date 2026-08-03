@@ -7,7 +7,10 @@ import type { RoomEvent } from "@/types/room";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:8081/ws";
 
-export function useRoomSubscription(roomId: string | undefined, onEvent: (event: RoomEvent) => void) {
+export function useRoomSubscription(
+  roomId: string | undefined,
+  onEvent: (event: RoomEvent) => void,
+) {
   const onEventRef = useRef(onEvent);
 
   useEffect(() => {

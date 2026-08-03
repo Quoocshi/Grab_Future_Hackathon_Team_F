@@ -2,8 +2,7 @@ type RequestOptions = {
   init?: RequestInit;
 };
 
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8081/api/v1";
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8081/api/v1";
 
 type ApiEnvelope<T> = {
   success?: boolean;
@@ -21,10 +20,7 @@ class ApiError extends Error {
   }
 }
 
-export async function requestJson<T>(
-  path: string,
-  { init }: RequestOptions = {},
-): Promise<T> {
+export async function requestJson<T>(path: string, { init }: RequestOptions = {}): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {

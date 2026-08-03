@@ -9,7 +9,10 @@ type Props = {
 export function PriceCompare({ quotes = [], bestQuote }: Props) {
   if (!quotes.length) {
     return (
-      <div id="tour-price-compare" className="rounded-xl border border-dashed bg-card p-6 text-sm text-muted-foreground">
+      <div
+        id="tour-price-compare"
+        className="rounded-xl border border-dashed bg-card p-6 text-sm text-muted-foreground"
+      >
         Partner quotes will appear after the countdown finishes.
       </div>
     );
